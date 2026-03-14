@@ -209,7 +209,7 @@ def trigger_detection(inspection_id: str, db: Session = Depends(get_db), _user: 
             source="ai",
         )
         db.add(issue)
-    insp.status = InspectionStatus.REVIEWING
+    insp.status = InspectionStatus.COMPLETED
     db.commit()
     db.refresh(insp)
     return insp.to_dict()

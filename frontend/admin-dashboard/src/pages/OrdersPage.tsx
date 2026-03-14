@@ -10,6 +10,18 @@ const STATUS_COLORS: Record<string, string> = {
   inspection_completed: "bg-blue-100 text-blue-800",
   awaiting_customer_confirmation: "bg-orange-100 text-orange-800",
   confirmed: "bg-green-100 text-green-800",
+  ready_for_pickup: "bg-cyan-100 text-cyan-800",
+  picked_up: "bg-slate-100 text-slate-600",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  created: "Created",
+  inspection_pending: "Inspecting",
+  inspection_completed: "Insp. Done",
+  awaiting_customer_confirmation: "Awaiting Sig",
+  confirmed: "Confirmed",
+  ready_for_pickup: "Ready Pickup",
+  picked_up: "Picked Up",
 };
 
 export default function OrdersPage() {
@@ -35,6 +47,7 @@ export default function OrdersPage() {
           <Link to="/dashboard" className="text-sm hover:text-slate-300">Dashboard</Link>
           <Link to="/orders" className="text-sm text-white font-medium">Orders</Link>
           <Link to="/customers" className="text-sm hover:text-slate-300">Customers</Link>
+          <Link to="/staff" className="text-sm hover:text-slate-300">Staff</Link>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-slate-300">{user?.display_name || user?.username}</span>
@@ -81,7 +94,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[order.status] || "bg-gray-100"}`}>
-                    {order.status.replace(/_/g, " ")}
+                    {STATUS_LABEL[order.status] || order.status.replace(/_/g, " ")}
                   </span>
                   <span className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString()}</span>
                   <span className="text-gray-300">→</span>

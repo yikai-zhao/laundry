@@ -25,6 +25,7 @@ export default function CustomersPage() {
           <Link to="/dashboard" className="text-sm hover:text-slate-300">Dashboard</Link>
           <Link to="/orders" className="text-sm hover:text-slate-300">Orders</Link>
           <Link to="/customers" className="text-sm text-white font-medium">Customers</Link>
+          <Link to="/staff" className="text-sm hover:text-slate-300">Staff</Link>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-slate-300">{user?.display_name || user?.username}</span>

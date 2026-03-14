@@ -60,8 +60,10 @@ export default function LoginPage() {
         >
           {loading ? "Signing in..." : "Sign In"}
         </button>
-        <p className="text-xs text-gray-400 text-center">staff / staff123 · admin / admin123</p>
       </form>
+      <p className="text-xs text-gray-400 text-center mt-4">
+        Laundry Management System &copy; {new Date().getFullYear()}
+      </p>
     </div>
   );
 }

@@ -18,6 +18,7 @@ api.interceptors.request.use((config) => {
 });
 
 export function getCustomerSignBaseUrl(): string {
+  if (import.meta.env.VITE_CUSTOMER_SIGN_BASE_URL) return import.meta.env.VITE_CUSTOMER_SIGN_BASE_URL;
   const h = window.location.hostname;
   if (h.includes(".app.github.dev") || h.includes(".preview.app.github.dev"))
     return window.location.origin.replace(/-\d+\./, "-3003.");

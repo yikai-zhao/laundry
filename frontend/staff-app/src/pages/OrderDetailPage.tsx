@@ -28,39 +28,41 @@ const ISSUE_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 const SEV_LABEL: Record<number, string> = { 1: "Minor", 2: "Moderate", 3: "Severe" };
-const SEV_COLOR: Record<number, string> = {
-  1: "text-yellow-600",
-  2: "text-orange-600",
-  3: "text-red-600",
+const SEV_BADGE: Record<number, string> = {
+  1: "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  2: "bg-orange-50 text-orange-700 border border-orange-200",
+  3: "bg-red-50 text-red-700 border border-red-200",
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  created: "bg-gray-100 text-gray-700",
-  inspection_pending: "bg-yellow-100 text-yellow-800",
-  inspection_completed: "bg-blue-100 text-blue-800",
-  awaiting_customer_confirmation: "bg-orange-100 text-orange-800",
-  confirmed: "bg-green-100 text-green-800",
-  ready_for_pickup: "bg-cyan-100 text-cyan-800",
-  picked_up: "bg-slate-100 text-slate-600",
-};
 const STATUS_LABELS: Record<string, string> = {
   created: "Created",
   inspection_pending: "Inspecting",
-  inspection_completed: "Inspection Done",
-  awaiting_customer_confirmation: "Awaiting Signature",
-  confirmed: "✓ Confirmed",
-  ready_for_pickup: "Ready for Pickup",
+  inspection_completed: "Insp. Done",
+  awaiting_customer_confirmation: "Awaiting Sig",
+  confirmed: "Confirmed",
+  ready_for_pickup: "Ready Pickup",
   picked_up: "Picked Up",
 };
 
-// Status workflow transitions
-const NEXT_STATUS: Record<string, { status: string; label: string; color: string }[]> = {
-  created: [{ status: "inspection_pending", label: "→ Start Inspection", color: "bg-yellow-500 hover:bg-yellow-600" }],
-  inspection_pending: [{ status: "inspection_completed", label: "→ Finish Inspection", color: "bg-blue-500 hover:bg-blue-600" }],
+const STATUS_STEPS = [
+  "created",
+  "inspection_pending",
+  "inspection_completed",
+  "awaiting_customer_confirmation",
+  "confirmed",
+  "ready_for_pickup",
+  "picked_up",
+];
+
+const STEP_SHORT = ["New", "Inspect", "Done", "Sig", "✓", "Pack", "Gone"];
+
+const NEXT_STATUS: Record<string, { status: string; label: string; cls: string }[]> = {
+  created: [{ status: "inspection_pending", label: "Start Inspection →", cls: "bg-amber-500 hover:bg-amber-600" }],
+  inspection_pending: [{ status: "inspection_completed", label: "Finish Inspection →", cls: "bg-blue-600 hover:bg-blue-700" }],
   inspection_completed: [],
-  awaiting_customer_confirmation: [{ status: "ready_for_pickup", label: "→ Ready for Pickup", color: "bg-cyan-500 hover:bg-cyan-600" }],
-  confirmed: [{ status: "ready_for_pickup", label: "→ Ready for Pickup", color: "bg-cyan-500 hover:bg-cyan-600" }],
-  ready_for_pickup: [{ status: "picked_up", label: "→ Mark Picked Up", color: "bg-slate-500 hover:bg-slate-600" }],
+  awaiting_customer_confirmation: [{ status: "ready_for_pickup", label: "Mark Ready for Pickup →", cls: "bg-cyan-600 hover:bg-cyan-700" }],
+  confirmed: [{ status: "ready_for_pickup", label: "Mark Ready for Pickup →", cls: "bg-cyan-600 hover:bg-cyan-700" }],
+  ready_for_pickup: [{ status: "picked_up", label: "Mark Picked Up ✓", cls: "bg-slate-600 hover:bg-slate-700" }],
   picked_up: [],
 };
 
@@ -80,44 +82,44 @@ function IssueCard({ issue, onDelete, onUpdate }: { issue: Issue; onDelete: () =
     return (
       <div className="border rounded-lg p-3 bg-gray-50 space-y-2 text-sm">
         <div className="flex gap-2">
-          <select value={type} onChange={(e) => setType(e.target.value)} className="border rounded px-2 py-1 flex-1">
+          <select value={type} onChange={(e) => setType(e.target.value)} className="border rounded-lg px-2 py-1.5 flex-1 text-sm">
             {ISSUE_TYPES_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
-          <select value={sev} onChange={(e) => setSev(Number(e.target.value))} className="border rounded px-2 py-1 w-24">
+          <select value={sev} onChange={(e) => setSev(Number(e.target.value))} className="border rounded-lg px-2 py-1.5 w-28 text-sm">
             <option value={1}>Minor</option>
             <option value={2}>Moderate</option>
             <option value={3}>Severe</option>
           </select>
         </div>
-        <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Position (e.g. front left chest)" className="border rounded px-2 py-1 w-full" />
+        <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Location (e.g. front left chest)" className="border rounded-lg px-3 py-1.5 w-full text-sm" />
         <div className="flex gap-2">
-          <button onClick={save} className="bg-indigo-600 text-white px-3 py-1 rounded text-xs">Save</button>
-          <button onClick={() => setEditing(false)} className="text-gray-500 text-xs">Cancel</button>
+          <button onClick={save} className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium">Save</button>
+          <button onClick={() => setEditing(false)} className="text-gray-500 text-sm px-2">Cancel</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-start justify-between border rounded-lg p-2.5 text-sm gap-2">
-      <div className="flex items-start gap-2 min-w-0 flex-1">
-        <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-medium ${issue.source === "ai" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+    <div className="flex items-center justify-between rounded-lg p-2.5 bg-white border gap-2 text-sm">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded font-medium ${issue.source === "ai" ? "bg-violet-100 text-violet-700" : "bg-sky-100 text-sky-700"}`}>
           {issue.source === "ai" ? "AI" : "Manual"}
         </span>
+        <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${SEV_BADGE[issue.severity_level] || ""}`}>
+          {SEV_LABEL[issue.severity_level]}
+        </span>
         <div className="min-w-0">
-          <span className={`font-medium ${SEV_COLOR[issue.severity_level] || ""}`}>
-            {ISSUE_LABEL[issue.issue_type] || issue.issue_type}
-          </span>
-          <span className="text-gray-400 ml-1.5 text-xs">{SEV_LABEL[issue.severity_level] || `Lv.${issue.severity_level}`}</span>
-          {issue.position_desc && <p className="text-gray-500 text-xs mt-0.5 truncate">{issue.position_desc}</p>}
-          {issue.confidence_score && (
-            <span className="text-xs text-gray-300">Conf. {Math.round(issue.confidence_score * 100)}%</span>
+          <span className="font-medium text-gray-800">{ISSUE_LABEL[issue.issue_type] || issue.issue_type}</span>
+          {issue.position_desc && <span className="text-gray-400 ml-1.5">· {issue.position_desc}</span>}
+          {issue.confidence_score != null && (
+            <span className="text-xs text-gray-300 ml-1">({Math.round(issue.confidence_score * 100)}%)</span>
           )}
         </div>
       </div>
-      <div className="flex gap-2 shrink-0">
+      <div className="flex gap-3 shrink-0">
         <button onClick={() => setEditing(true)} className="text-indigo-600 text-xs hover:underline">Edit</button>
-        <button onClick={onDelete} className="text-red-500 text-xs hover:underline">Delete</button>
+        <button onClick={onDelete} className="text-red-400 text-xs hover:underline">✕</button>
       </div>
     </div>
   );
@@ -132,6 +134,7 @@ function GarmentCard({ item, onRefresh }: { item: OrderItem; onRefresh: () => vo
   const [newType, setNewType] = useState("stain");
   const [newSev, setNewSev] = useState(1);
   const [newPos, setNewPos] = useState("");
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const uploadPhotos = async (files: FileList) => {
     setUploading(true);
@@ -141,7 +144,6 @@ function GarmentCard({ item, onRefresh }: { item: OrderItem; onRefresh: () => vo
       await api.post(`/order-items/${item.id}/photos`, form);
     }
     setUploading(false);
-    // Auto-detect after uploading if no issues yet
     if (!item.inspection || item.inspection.issues.length === 0) {
       await triggerDetectAuto();
     } else {
@@ -192,108 +194,142 @@ function GarmentCard({ item, onRefresh }: { item: OrderItem; onRefresh: () => vo
     onRefresh();
   };
 
-  const INSP_STATUS_LABELS: Record<string, string> = {
-    pending: "Pending", detecting: "Detecting...", reviewing: "Reviewed", completed: "Complete",
-  };
+  const inspStatus = item.inspection?.status;
+  const issues = item.inspection?.issues || [];
 
   return (
-    <div className="bg-white border rounded-xl p-4 space-y-3">
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-semibold text-gray-900">{item.garment_type}</h3>
-          <p className="text-xs text-gray-500">
-            {[item.color, item.brand].filter(Boolean).join(" · ") || "—"}
-            {item.note && ` · ${item.note}`}
-          </p>
+    <>
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-lg" onClick={(e) => e.stopPropagation()} />
+          <button className="absolute top-4 right-4 text-white text-2xl font-light" onClick={() => setLightbox(null)}>✕</button>
         </div>
-        {item.inspection && (
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            item.inspection.status === "reviewing" ? "bg-yellow-100 text-yellow-700" :
-            item.inspection.status === "completed" ? "bg-green-100 text-green-700" :
-            item.inspection.status === "detecting" ? "bg-purple-100 text-purple-700" :
-            "bg-gray-100 text-gray-600"
-          }`}>
-            {INSP_STATUS_LABELS[item.inspection.status] || item.inspection.status}
-          </span>
-        )}
-      </div>
+      )}
 
-      {/* Photos */}
-      <div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {item.photos.map((p) => (
-            <img key={p.id} src={`${API_HOST}${p.file_path}`} alt="" className="w-20 h-20 rounded-lg object-cover border flex-shrink-0" />
-          ))}
-          {item.photos.length === 0 && <div className="text-xs text-gray-400 py-4">No photos yet — take a photo or upload</div>}
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        {/* Garment header */}
+        <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-gray-50">
+          <div>
+            <h3 className="font-semibold text-gray-900 text-base">{item.garment_type}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {[item.color, item.brand].filter(Boolean).join(" · ") || "No color / brand specified"}
+              {item.note && ` · ${item.note}`}
+            </p>
+          </div>
+          {inspStatus && (
+            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+              inspStatus === "completed" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
+              inspStatus === "detecting" ? "bg-violet-50 text-violet-600 border border-violet-200" :
+              inspStatus === "reviewing" ? "bg-blue-50 text-blue-600 border border-blue-200" :
+              "bg-gray-100 text-gray-500"
+            }`}>
+              {inspStatus === "completed" ? "✓ Scanned" :
+               inspStatus === "detecting" ? "⏳ Scanning…" :
+               inspStatus === "reviewing" ? "Reviewed" : "Pending"}
+            </span>
+          )}
         </div>
-        <div className="flex gap-2 mt-2 flex-wrap">
-          {/* Camera capture (mobile) */}
+
+        {/* Photos */}
+        <div className="px-4 py-3">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {item.photos.map((p) => (
+              <button key={p.id} onClick={() => setLightbox(`${API_HOST}${p.file_path}`)} className="shrink-0">
+                <img src={`${API_HOST}${p.file_path}`} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition" />
+              </button>
+            ))}
+            {item.photos.length === 0 && (
+              <div className="w-full text-center py-4 text-xs text-gray-400">No photos yet — use Camera or Gallery below</div>
+            )}
+          </div>
+
+          {/* Upload buttons */}
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
             onChange={(e) => e.target.files && uploadPhotos(e.target.files)} />
-          {/* Gallery / file picker */}
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
             onChange={(e) => e.target.files && uploadPhotos(e.target.files)} />
-          <button onClick={() => cameraRef.current?.click()} disabled={uploading}
-            className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700 transition disabled:opacity-50">
-            {uploading ? "Uploading..." : "📷 Camera"}
-          </button>
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-200 transition disabled:opacity-50">
-            {uploading ? "Uploading..." : "🖼 Gallery"}
-          </button>
-          <button onClick={triggerDetect} disabled={detecting || item.photos.length === 0}
-            className="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-purple-200 transition disabled:opacity-50">
-            {detecting ? "Detecting..." : "🤖 Re-detect"}
-          </button>
-        </div>
-        {detecting && (
-          <div className="flex items-center gap-2 text-xs text-purple-600 mt-1">
-            <div className="w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-            AI is analyzing photos, please wait...
+
+          <div className="flex gap-2 mt-3 flex-wrap">
+            <button onClick={() => cameraRef.current?.click()} disabled={uploading || detecting}
+              className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50 shadow-sm">
+              <span>📷</span> {uploading ? "Uploading…" : "Camera"}
+            </button>
+            <button onClick={() => fileRef.current?.click()} disabled={uploading || detecting}
+              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
+              <span>🖼</span> Gallery
+            </button>
+            <button onClick={triggerDetect} disabled={detecting || item.photos.length === 0}
+              className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-violet-100 transition disabled:opacity-50 ml-auto">
+              <span>🤖</span> {detecting ? "Analyzing…" : "Re-detect"}
+            </button>
           </div>
-        )}
-      </div>
 
-      {/* Issues */}
-      {item.inspection && item.inspection.issues.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-700">Issues ({item.inspection.issues.length})</h4>
-          {item.inspection.issues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} onDelete={() => deleteIssue(issue.id)} onUpdate={() => onRefresh()} />
-          ))}
-        </div>
-      )}
-      {item.inspection && item.inspection.issues.length === 0 && item.inspection.status !== "pending" && (
-        <p className="text-sm text-green-600">✓ No issues found by AI</p>
-      )}
-
-      {/* Add Manual Issue */}
-      {item.inspection && (
-        <div>
-          {!showAddIssue ? (
-            <button onClick={() => setShowAddIssue(true)} className="text-xs text-indigo-600 font-medium">+ Add Issue Manually</button>
-          ) : (
-            <div className="border rounded-lg p-3 bg-gray-50 space-y-2 text-sm">
-              <div className="flex gap-2">
-                <select value={newType} onChange={(e) => setNewType(e.target.value)} className="border rounded px-2 py-1 flex-1">
-                  {ISSUE_TYPES_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-                <select value={newSev} onChange={(e) => setNewSev(Number(e.target.value))} className="border rounded px-2 py-1 w-24">
-                  <option value={1}>Minor</option>
-                  <option value={2}>Moderate</option>
-                  <option value={3}>Severe</option>
-                </select>
-              </div>
-              <input value={newPos} onChange={(e) => setNewPos(e.target.value)} placeholder="Position (e.g. front left chest)" className="border rounded px-2 py-1 w-full" />
-              <div className="flex gap-2">
-                <button onClick={addManualIssue} className="bg-indigo-600 text-white px-3 py-1 rounded text-xs">Add</button>
-                <button onClick={() => setShowAddIssue(false)} className="text-gray-500 text-xs">Cancel</button>
-              </div>
+          {detecting && (
+            <div className="flex items-center gap-2 mt-2 text-xs text-violet-600 bg-violet-50 rounded-lg px-3 py-2">
+              <div className="w-3 h-3 border-2 border-violet-400 border-t-violet-700 rounded-full animate-spin shrink-0" />
+              AI is analyzing garment photos…
             </div>
           )}
         </div>
-      )}
-    </div>
+
+        {/* Issues */}
+        {issues.length > 0 && (
+          <div className="px-4 pb-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-gray-700">Issues Found ({issues.length})</h4>
+            </div>
+            {issues.map((issue) => (
+              <IssueCard key={issue.id} issue={issue} onDelete={() => deleteIssue(issue.id)} onUpdate={() => onRefresh()} />
+            ))}
+          </div>
+        )}
+
+        {item.inspection && issues.length === 0 && inspStatus !== "pending" && !detecting && (
+          <div className="px-4 pb-3">
+            <div className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+              ✓ No issues detected — garment looks good
+            </div>
+          </div>
+        )}
+
+        {/* Manual issue */}
+        {item.inspection && (
+          <div className="px-4 pb-4">
+            {!showAddIssue ? (
+              <button onClick={() => setShowAddIssue(true)}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
+                <span className="text-base leading-none">+</span> Add Issue Manually
+              </button>
+            ) : (
+              <div className="border border-indigo-100 rounded-xl p-3 bg-indigo-50/40 space-y-2">
+                <div className="flex gap-2">
+                  <select value={newType} onChange={(e) => setNewType(e.target.value)}
+                    className="border rounded-lg px-2 py-1.5 text-sm flex-1 bg-white">
+                    {ISSUE_TYPES_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                  <select value={newSev} onChange={(e) => setNewSev(Number(e.target.value))}
+                    className="border rounded-lg px-2 py-1.5 text-sm w-28 bg-white">
+                    <option value={1}>Minor</option>
+                    <option value={2}>Moderate</option>
+                    <option value={3}>Severe</option>
+                  </select>
+                </div>
+                <input value={newPos} onChange={(e) => setNewPos(e.target.value)}
+                  placeholder="Location (e.g. front left chest)"
+                  className="border rounded-lg px-3 py-1.5 w-full text-sm bg-white" />
+                <div className="flex gap-2">
+                  <button onClick={addManualIssue}
+                    className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700">
+                    Add
+                  </button>
+                  <button onClick={() => setShowAddIssue(false)} className="text-gray-500 text-sm">Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -304,8 +340,10 @@ export default function OrderDetailPage() {
   const [garmentType, setGarmentType] = useState("");
   const [garmentColor, setGarmentColor] = useState("");
   const [garmentBrand, setGarmentBrand] = useState("");
+  const [garmentNote, setGarmentNote] = useState("");
   const [qrUrl, setQrUrl] = useState("");
   const [genLoading, setGenLoading] = useState(false);
+  const [showAddGarment, setShowAddGarment] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -330,10 +368,13 @@ export default function OrderDetailPage() {
       garment_type: garmentType,
       color: garmentColor || null,
       brand: garmentBrand || null,
+      note: garmentNote || null,
     });
     setGarmentType("");
     setGarmentColor("");
     setGarmentBrand("");
+    setGarmentNote("");
+    setShowAddGarment(false);
     load();
   };
 
@@ -355,109 +396,244 @@ export default function OrderDetailPage() {
     load();
   };
 
-  if (loading) return <div className="text-center py-12 text-gray-400">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-gray-400">
+        <div className="w-8 h-8 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin mb-3" />
+        Loading order…
+      </div>
+    );
+  }
   if (!order) return <div className="text-center py-12 text-red-500">Order not found</div>;
 
+  const stepIdx = STATUS_STEPS.indexOf(order.status);
   const nextStatuses = NEXT_STATUS[order.status] || [];
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-4 pb-20">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link to="/orders" className="text-sm text-indigo-600 hover:underline">← Orders</Link>
-          <h1 className="text-xl font-bold text-gray-800 mt-1">{order.customer?.name}</h1>
-          {order.customer?.phone && (
-            <a href={`tel:${order.customer.phone}`} className="text-sm text-indigo-600">{order.customer.phone}</a>
-          )}
-          <p className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleString()}</p>
-          {order.note && <p className="text-sm text-gray-500 mt-1 bg-yellow-50 rounded px-2 py-1">Note: {order.note}</p>}
-        </div>
-        <div className="shrink-0 text-right space-y-1">
-          <span className={`text-xs px-3 py-1 rounded-full font-medium block ${STATUS_COLORS[order.status] || "bg-gray-100"}`}>
-            {STATUS_LABELS[order.status] || order.status}
-          </span>
-          {nextStatuses.map((n) => (
-            <button key={n.status} onClick={() => updateStatus(n.status)}
-              className={`text-xs text-white px-2 py-1 rounded-full block w-full ${n.color} transition`}>
-              {n.label}
-            </button>
-          ))}
+    <div className="max-w-2xl mx-auto pb-28">
+      {/* Status timeline */}
+      <div className="bg-white border-b px-4 py-3">
+        <div className="flex items-center overflow-x-auto">
+          {STATUS_STEPS.map((step, idx) => {
+            const done = idx < stepIdx;
+            const current = idx === stepIdx;
+            return (
+              <div key={step} className="flex items-center shrink-0">
+                <div className="flex flex-col items-center">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    done ? "bg-indigo-600 text-white" :
+                    current ? "bg-indigo-600 text-white ring-4 ring-indigo-100 scale-110" :
+                    "bg-gray-100 text-gray-400"
+                  }`}>
+                    {done ? "✓" : idx + 1}
+                  </div>
+                  <div className={`mt-1 text-center leading-tight w-10 ${
+                    current ? "text-indigo-600 font-semibold" :
+                    done ? "text-gray-500" : "text-gray-300"
+                  }`} style={{ fontSize: "9px" }}>
+                    {STEP_SHORT[idx]}
+                  </div>
+                </div>
+                {idx < STATUS_STEPS.length - 1 && (
+                  <div className={`h-0.5 w-4 mx-0.5 mb-4 shrink-0 transition-colors ${idx < stepIdx ? "bg-indigo-600" : "bg-gray-200"}`} />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Add Garment */}
-      <div className="bg-white border rounded-xl p-4">
-        <h2 className="font-semibold text-gray-700 mb-3">Add Garment</h2>
-        <div className="flex gap-2 flex-wrap">
-          <div className="flex-1 min-w-[150px] relative">
-            <input
-              list="garment-presets"
-              placeholder="Garment type * (type or select)"
-              className="border rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-2 focus:ring-indigo-500"
-              value={garmentType}
-              onChange={(e) => setGarmentType(e.target.value)}
-            />
-            <datalist id="garment-presets">
-              {GARMENT_PRESETS.map((p) => <option key={p} value={p} />)}
-            </datalist>
+      {/* Customer info */}
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Link to="/orders" className="text-xs text-indigo-500 hover:underline flex items-center gap-1 mb-1">
+              ← All Orders
+            </Link>
+            <h1 className="text-xl font-bold text-gray-900">{order.customer?.name}</h1>
+            {order.customer?.phone && (
+              <a href={`tel:${order.customer.phone}`} className="text-sm text-indigo-600 flex items-center gap-1 mt-0.5">
+                📞 {order.customer.phone}
+              </a>
+            )}
+            {order.customer?.email && (
+              <p className="text-xs text-gray-400 mt-0.5">✉ {order.customer.email}</p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">{new Date(order.created_at).toLocaleString()}</p>
           </div>
-          <input
-            placeholder="Color"
-            className="border rounded-lg px-3 py-2 text-sm w-20 outline-none focus:ring-2 focus:ring-indigo-500"
-            value={garmentColor}
-            onChange={(e) => setGarmentColor(e.target.value)}
-          />
-          <input
-            placeholder="Brand"
-            className="border rounded-lg px-3 py-2 text-sm w-20 outline-none focus:ring-2 focus:ring-indigo-500"
-            value={garmentBrand}
-            onChange={(e) => setGarmentBrand(e.target.value)}
-          />
-          <button onClick={addGarment} disabled={!garmentType.trim()} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition">
-            Add
-          </button>
+          <div className="text-right">
+            <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-semibold ${
+              order.status === "picked_up" ? "bg-slate-100 text-slate-600" :
+              order.status === "confirmed" || order.status === "ready_for_pickup" ? "bg-emerald-100 text-emerald-700" :
+              order.status === "awaiting_customer_confirmation" ? "bg-orange-100 text-orange-700" :
+              "bg-indigo-100 text-indigo-700"
+            }`}>
+              {STATUS_LABELS[order.status] || order.status}
+            </span>
+          </div>
         </div>
+        {order.note && (
+          <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-sm text-amber-800">
+            📝 {order.note}
+          </div>
+        )}
       </div>
 
       {/* Garments */}
-      {order.items.length === 0 ? (
-        <div className="text-center py-8 text-gray-400 text-sm">No garments added yet</div>
-      ) : (
-        <div className="space-y-3">
-          <h2 className="font-semibold text-gray-700">Garments ({order.items.length})</h2>
-          {order.items.map((item) => (
-            <GarmentCard key={item.id} item={item} onRefresh={load} />
-          ))}
+      <div className="px-4 pb-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-gray-800 text-base">
+            Garments {order.items.length > 0 && <span className="text-gray-400 font-normal text-sm">({order.items.length})</span>}
+          </h2>
+          <button
+            onClick={() => setShowAddGarment((v) => !v)}
+            className="text-sm text-indigo-600 font-medium flex items-center gap-1 hover:text-indigo-800"
+          >
+            <span className="text-lg leading-none">+</span> Add Garment
+          </button>
+        </div>
+
+        {/* Add garment form */}
+        {showAddGarment && (
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 space-y-3">
+            <div className="relative">
+              <input
+                list="garment-presets"
+                placeholder="Garment type (required)"
+                className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                value={garmentType}
+                onChange={(e) => setGarmentType(e.target.value)}
+              />
+              <datalist id="garment-presets">
+                {GARMENT_PRESETS.map((p) => <option key={p} value={p} />)}
+              </datalist>
+            </div>
+            <div className="flex gap-2">
+              <input
+                placeholder="Color"
+                className="border rounded-xl px-3 py-2.5 text-sm flex-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                value={garmentColor}
+                onChange={(e) => setGarmentColor(e.target.value)}
+              />
+              <input
+                placeholder="Brand"
+                className="border rounded-xl px-3 py-2.5 text-sm flex-1 outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                value={garmentBrand}
+                onChange={(e) => setGarmentBrand(e.target.value)}
+              />
+            </div>
+            <input
+              placeholder="Note (optional)"
+              className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              value={garmentNote}
+              onChange={(e) => setGarmentNote(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button onClick={addGarment} disabled={!garmentType.trim()}
+                className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition">
+                Add Garment
+              </button>
+              <button onClick={() => setShowAddGarment(false)}
+                className="px-4 text-gray-500 text-sm rounded-xl border border-gray-200 hover:bg-gray-50">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {order.items.length === 0 && !showAddGarment && (
+          <div className="text-center py-10 text-gray-400 text-sm bg-gray-50 rounded-2xl">
+            <div className="text-3xl mb-2">👕</div>
+            No garments added yet.<br />Tap "+ Add Garment" to start.
+          </div>
+        )}
+
+        {order.items.map((item) => (
+          <GarmentCard key={item.id} item={item} onRefresh={load} />
+        ))}
+      </div>
+
+      {/* Customer Confirmation / QR */}
+      {order.items.length > 0 && (
+        <div className="px-4 pb-4">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+            <h2 className="font-bold text-gray-800 text-base mb-3">Customer Confirmation</h2>
+            {order.confirmation?.status === "signed" ? (
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full font-semibold text-sm border border-emerald-200">
+                  ✓ Signed & Confirmed
+                </div>
+                <p className="text-sm text-gray-600">By: <strong>{order.confirmation.customer_name}</strong></p>
+                <p className="text-xs text-gray-400">
+                  {order.confirmation.confirmed_at && new Date(order.confirmation.confirmed_at).toLocaleString()}
+                </p>
+                {order.confirmation.signature && (
+                  <div className="border rounded-xl p-2 inline-block bg-gray-50 mt-2">
+                    <img src={order.confirmation.signature.signature_data} alt="Signature" className="max-h-20" />
+                  </div>
+                )}
+              </div>
+            ) : qrUrl ? (
+              <div className="text-center space-y-3">
+                <div className="inline-block p-3 bg-white border-2 border-gray-100 rounded-2xl shadow-sm">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrUrl)}`}
+                    alt="QR Code"
+                    className="w-52 h-52"
+                  />
+                </div>
+                <p className="text-sm text-gray-600 font-medium">Show QR to customer to sign</p>
+                <p className="text-xs text-gray-400 break-all">{qrUrl}</p>
+              </div>
+            ) : (
+              <button
+                onClick={generateConfirmation}
+                disabled={genLoading}
+                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 transition flex items-center justify-center gap-2 text-sm"
+              >
+                <span>📱</span> {genLoading ? "Generating…" : "Generate Customer QR Code"}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Customer Confirmation */}
-      {order.items.length > 0 && (
-        <div className="bg-white border rounded-xl p-4">
-          <h2 className="font-semibold text-gray-700 mb-3">Customer Confirmation</h2>
-          {order.confirmation?.status === "signed" ? (
-            <div className="text-center space-y-2">
-              <div className="text-green-600 font-semibold text-lg">✓ Signed & Confirmed</div>
-              <p className="text-sm text-gray-600">By: {order.confirmation.customer_name}</p>
-              <p className="text-xs text-gray-400">{order.confirmation.confirmed_at && new Date(order.confirmation.confirmed_at).toLocaleString()}</p>
-              {order.confirmation.signature && (
-                <img src={order.confirmation.signature.signature_data} alt="Signature" className="mx-auto border rounded-lg max-h-24 mt-2" />
-              )}
-            </div>
-          ) : qrUrl ? (
-            <div className="text-center space-y-3">
-              <div className="inline-block p-3 bg-white border-2 rounded-xl">
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrUrl)}`} alt="QR Code" className="w-52 h-52" />
+      {/* Sticky action footer */}
+      {nextStatuses.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg px-4 py-3 z-40">
+          <div className="max-w-2xl mx-auto flex gap-2">
+            {nextStatuses.map((n) => (
+              <button
+                key={n.status}
+                onClick={() => updateStatus(n.status)}
+                className={`flex-1 text-white py-3 rounded-xl font-semibold text-sm transition shadow-sm ${n.cls}`}
+              >
+                {n.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Send for signature (when inspection is done) */}
+      {order.status === "inspection_completed" && order.items.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg px-4 py-3 z-40">
+          <div className="max-w-2xl mx-auto">
+            {!qrUrl ? (
+              <button
+                onClick={generateConfirmation}
+                disabled={genLoading}
+                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-emerald-700 disabled:opacity-50 transition shadow-sm"
+              >
+                <span className="mr-2">📱</span>
+                {genLoading ? "Generating QR…" : "Send to Customer for Signature"}
+              </button>
+            ) : (
+              <div className="text-center text-sm text-gray-500">
+                QR code generated above — awaiting customer signature
               </div>
-              <p className="text-sm text-gray-500">Customer scans QR to review report & sign</p>
-              <p className="text-xs text-gray-300 break-all">{qrUrl}</p>
-            </div>
-          ) : (
-            <button onClick={generateConfirmation} disabled={genLoading} className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition text-sm">
-              {genLoading ? "Generating..." : "🔗 Generate Customer QR Code"}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>

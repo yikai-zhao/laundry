@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-laundry}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-laundry_db}
       JWT_SECRET: ${JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}
       MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-10485760}
     volumes:
@@ -36,6 +37,7 @@ services:
       context: ./frontend/staff-app
       args:
         VITE_API_BASE_URL: ${API_BASE_URL}
+        VITE_CUSTOMER_SIGN_BASE_URL: ${CUSTOMER_SIGN_BASE_URL}
     container_name: laundry-staff-app
     restart: unless-stopped
 
