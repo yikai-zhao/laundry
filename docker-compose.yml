@@ -12,13 +12,6 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7
-    container_name: laundry-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-
   backend-api:
     build:
       context: ./backend/api-service
@@ -27,20 +20,10 @@ services:
     environment:
       APP_ENV: development
       DATABASE_URL: postgresql+psycopg://laundry:laundry@postgres:5432/laundry_db
-      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     depends_on:
       - postgres
-      - redis
-
-  ai-service:
-    build:
-      context: ./ai-service
-    container_name: laundry-ai-service
-    restart: unless-stopped
-    ports:
-      - "8100:8100"
 
 volumes:
   pg_data:

@@ -51,6 +51,7 @@ export interface OrderItem {
   color: string | null;
   brand: string | null;
   note: string | null;
+  unit_price: number;
   photos: Photo[];
   inspection: Inspection | null;
   created_at: string;
@@ -72,6 +73,7 @@ export interface Order {
   customer_id: string;
   status: string;
   note: string | null;
+  total_price: number;
   created_at: string;
   updated_at: string | null;
   customer: Customer;

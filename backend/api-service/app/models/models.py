@@ -31,6 +31,7 @@ class OrderStatus(str, enum.Enum):
     CONFIRMED = "confirmed"
     READY_FOR_PICKUP = "ready_for_pickup"
     PICKED_UP = "picked_up"
+    CANCELLED = "cancelled"
 
 
 class InspectionStatus(str, enum.Enum):
@@ -110,6 +111,7 @@ class LaundryOrder(Base):
         if include_details:
             d["customer"] = self.customer.to_dict() if self.customer else None
             d["items"] = [item.to_dict() for item in self.items]
+            d["total_price"] = round(sum((item.unit_price or 0.0) for item in self.items), 2)
             confs = sorted(self.confirmations, key=lambda c: c.created_at, reverse=True) if self.confirmations else []
             d["confirmation"] = confs[0].to_dict() if confs else None
         return d
@@ -123,6 +125,7 @@ class LaundryOrderItem(Base):
     color = Column(String)
     brand = Column(String)
     note = Column(Text)
+    unit_price = Column(Float, default=0.0)
     created_at = Column(DateTime, default=_now)
 
     order = relationship("LaundryOrder", back_populates="items")
@@ -137,6 +140,7 @@ class LaundryOrderItem(Base):
             "color": self.color,
             "brand": self.brand,
             "note": self.note,
+            "unit_price": self.unit_price or 0.0,
             "photos": [p.to_dict() for p in self.photos],
             "inspection": self.inspection.to_dict() if self.inspection else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,

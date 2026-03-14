@@ -14,6 +14,7 @@ class ItemCreate(BaseModel):
     color: str | None = None
     brand: str | None = None
     note: str | None = None
+    unit_price: float = 0.0
 
 
 @router.post("/orders/{order_id}/items")
@@ -27,6 +28,7 @@ def create_item(order_id: str, payload: ItemCreate, db: Session = Depends(get_db
         color=payload.color,
         brand=payload.brand,
         note=payload.note,
+        unit_price=payload.unit_price,
     )
     db.add(item)
     if order.status == OrderStatus.CREATED:
@@ -52,3 +54,28 @@ def delete_item(item_id: str, db: Session = Depends(get_db), _user: AppUser = De
     db.delete(item)
     db.commit()
     return {"ok": True}
+
+
+class ItemUpdate(BaseModel):
+    unit_price: float | None = None
+    note: str | None = None
+    color: str | None = None
+    brand: str | None = None
+
+
+@router.patch("/order-items/{item_id}")
+def update_item(item_id: str, payload: ItemUpdate, db: Session = Depends(get_db), _user: AppUser = Depends(get_current_user)):
+    item = db.query(LaundryOrderItem).filter(LaundryOrderItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if payload.unit_price is not None:
+        item.unit_price = payload.unit_price
+    if payload.note is not None:
+        item.note = payload.note
+    if payload.color is not None:
+        item.color = payload.color
+    if payload.brand is not None:
+        item.brand = payload.brand
+    db.commit()
+    db.refresh(item)
+    return item.to_dict()

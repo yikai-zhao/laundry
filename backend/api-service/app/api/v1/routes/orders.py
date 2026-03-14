@@ -12,7 +12,9 @@ from app.models.models import (
     Customer,
     CustomerConfirmation,
     LaundryOrder,
+    LaundryOrderItem,
     OrderStatus,
+    UserRole,
 )
 
 router = APIRouter()
@@ -27,15 +29,24 @@ class OrderCreate(BaseModel):
 def list_orders(
     status: str | None = None,
     q: str = "",
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     _user: AppUser = Depends(get_current_user),
 ):
+    if limit > 200:
+        limit = 200
     query = db.query(LaundryOrder).options(joinedload(LaundryOrder.customer))
     if status:
         query = query.filter(LaundryOrder.status == status)
     if q:
-        query = query.join(Customer).filter(Customer.name.ilike(f"%{q}%"))
-    orders = query.order_by(LaundryOrder.created_at.desc()).limit(200).all()
+        query = query.join(Customer).filter(
+            Customer.name.ilike(f"%{q}%") | Customer.phone.ilike(f"%{q}%")
+        )
+    else:
+        query = query.join(Customer, isouter=True)
+    total = query.count()
+    orders = query.order_by(LaundryOrder.created_at.desc()).offset(skip).limit(limit).all()
     return [o.to_dict(include_details=True) for o in orders]
 
 
@@ -110,3 +121,35 @@ def update_order_status(
     db.commit()
     db.refresh(order)
     return order.to_dict(include_details=True)
+
+
+@router.post("/{order_id}/cancel")
+def cancel_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    _user: AppUser = Depends(get_current_user),
+):
+    order = db.query(LaundryOrder).filter(LaundryOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status == OrderStatus.PICKED_UP:
+        raise HTTPException(status_code=400, detail="Cannot cancel an order that has already been picked up")
+    order.status = OrderStatus.CANCELLED
+    db.commit()
+    return {"ok": True, "status": "cancelled"}
+
+
+@router.delete("/{order_id}")
+def delete_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: AppUser = Depends(get_current_user),
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required to delete orders")
+    order = db.query(LaundryOrder).filter(LaundryOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    db.delete(order)
+    db.commit()
+    return {"ok": True}

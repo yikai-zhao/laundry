@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { api, API_HOST, getCustomerSignBaseUrl } from "../services/api";
 import type { Order, OrderItem, Issue } from "../types";
 
@@ -42,6 +42,7 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: "Confirmed",
   ready_for_pickup: "Ready Pickup",
   picked_up: "Picked Up",
+  cancelled: "Cancelled",
 };
 
 const STATUS_STEPS = [
@@ -125,7 +126,7 @@ function IssueCard({ issue, onDelete, onUpdate }: { issue: Issue; onDelete: () =
   );
 }
 
-function GarmentCard({ item, onRefresh }: { item: OrderItem; onRefresh: () => void }) {
+function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh: () => void; onDelete: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -135,6 +136,15 @@ function GarmentCard({ item, onRefresh }: { item: OrderItem; onRefresh: () => vo
   const [newSev, setNewSev] = useState(1);
   const [newPos, setNewPos] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState(String(item.unit_price ?? 0));
+
+  const savePrice = async () => {
+    const price = parseFloat(priceInput) || 0;
+    await api.patch(`/order-items/${item.id}`, { unit_price: price });
+    setEditingPrice(false);
+    onRefresh();
+  };
 
   const uploadPhotos = async (files: FileList) => {
     setUploading(true);
@@ -216,18 +226,51 @@ function GarmentCard({ item, onRefresh }: { item: OrderItem; onRefresh: () => vo
               {item.note && ` · ${item.note}`}
             </p>
           </div>
-          {inspStatus && (
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-              inspStatus === "completed" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
-              inspStatus === "detecting" ? "bg-violet-50 text-violet-600 border border-violet-200" :
-              inspStatus === "reviewing" ? "bg-blue-50 text-blue-600 border border-blue-200" :
-              "bg-gray-100 text-gray-500"
-            }`}>
-              {inspStatus === "completed" ? "✓ Scanned" :
-               inspStatus === "detecting" ? "⏳ Scanning…" :
-               inspStatus === "reviewing" ? "Reviewed" : "Pending"}
-            </span>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {editingPrice ? (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-500 font-medium">$</span>
+                <input
+                  autoFocus
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  onBlur={savePrice}
+                  onKeyDown={(e) => { if (e.key === "Enter") savePrice(); if (e.key === "Escape") setEditingPrice(false); }}
+                  className="w-20 border rounded-lg px-2 py-1 text-sm text-right focus:ring-2 focus:ring-green-400 outline-none"
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => { setPriceInput(String(item.unit_price ?? 0)); setEditingPrice(true); }}
+                title="Click to set price"
+                className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition"
+              >
+                ${(item.unit_price ?? 0).toFixed(2)}
+              </button>
+            )}
+            {inspStatus && (
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                inspStatus === "completed" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
+                inspStatus === "detecting" ? "bg-violet-50 text-violet-600 border border-violet-200" :
+                inspStatus === "reviewing" ? "bg-blue-50 text-blue-600 border border-blue-200" :
+                "bg-gray-100 text-gray-500"
+              }`}>
+                {inspStatus === "completed" ? "✓ Scanned" :
+                 inspStatus === "detecting" ? "⏳ Scanning…" :
+                 inspStatus === "reviewing" ? "Reviewed" : "Pending"}
+              </span>
+            )}
+            <button
+              onClick={onDelete}
+              title="Remove this garment"
+              className="text-gray-300 hover:text-red-500 transition text-base leading-none ml-1"
+            >
+              🗑
+            </button>
+          </div>
         </div>
 
         {/* Photos */}
@@ -335,15 +378,18 @@ function GarmentCard({ item, onRefresh }: { item: OrderItem; onRefresh: () => vo
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [garmentType, setGarmentType] = useState("");
   const [garmentColor, setGarmentColor] = useState("");
   const [garmentBrand, setGarmentBrand] = useState("");
   const [garmentNote, setGarmentNote] = useState("");
+  const [garmentPrice, setGarmentPrice] = useState("0");
   const [qrUrl, setQrUrl] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [showAddGarment, setShowAddGarment] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -369,13 +415,34 @@ export default function OrderDetailPage() {
       color: garmentColor || null,
       brand: garmentBrand || null,
       note: garmentNote || null,
+      unit_price: parseFloat(garmentPrice) || 0,
     });
     setGarmentType("");
     setGarmentColor("");
     setGarmentBrand("");
     setGarmentNote("");
+    setGarmentPrice("0");
     setShowAddGarment(false);
     load();
+  };
+
+  const deleteGarment = async (itemId: string) => {
+    if (!confirm("Remove this garment from the order?")) return;
+    await api.delete(`/order-items/${itemId}`);
+    load();
+  };
+
+  const cancelOrder = async () => {
+    if (!confirm("Cancel this order? This cannot be undone if the order has been picked up.")) return;
+    setCancelling(true);
+    try {
+      await api.post(`/orders/${id}/cancel`);
+      navigate("/orders");
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      alert(err?.response?.data?.detail || "Could not cancel order");
+      setCancelling(false);
+    }
   };
 
   const generateConfirmation = async () => {
@@ -461,8 +528,9 @@ export default function OrderDetailPage() {
             )}
             <p className="text-xs text-gray-400 mt-1">{new Date(order.created_at).toLocaleString()}</p>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0 space-y-2">
             <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-semibold ${
+              order.status === "cancelled" ? "bg-red-100 text-red-600" :
               order.status === "picked_up" ? "bg-slate-100 text-slate-600" :
               order.status === "confirmed" || order.status === "ready_for_pickup" ? "bg-emerald-100 text-emerald-700" :
               order.status === "awaiting_customer_confirmation" ? "bg-orange-100 text-orange-700" :
@@ -470,6 +538,29 @@ export default function OrderDetailPage() {
             }`}>
               {STATUS_LABELS[order.status] || order.status}
             </span>
+            {order.items.length > 0 && (
+              <div className="text-right">
+                <span className="text-base font-bold text-gray-900">${(order.total_price ?? 0).toFixed(2)}</span>
+                <span className="text-xs text-gray-400 ml-1">total</span>
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              {order.status !== "cancelled" && order.status !== "picked_up" && (
+                <button
+                  onClick={cancelOrder}
+                  disabled={cancelling}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition disabled:opacity-50"
+                >
+                  {cancelling ? "…" : "Cancel Order"}
+                </button>
+              )}
+              <Link
+                to={`/orders/${id}/receipt`}
+                className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+              >
+                🖨 Receipt
+              </Link>
+            </div>
           </div>
         </div>
         {order.note && (
@@ -528,6 +619,18 @@ export default function OrderDetailPage() {
               value={garmentNote}
               onChange={(e) => setGarmentNote(e.target.value)}
             />
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 font-medium shrink-0">Price ($)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                className="border rounded-xl px-3 py-2.5 text-sm w-28 outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-right"
+                value={garmentPrice}
+                onChange={(e) => setGarmentPrice(e.target.value)}
+              />
+            </div>
             <div className="flex gap-2">
               <button onClick={addGarment} disabled={!garmentType.trim()}
                 className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition">
@@ -549,7 +652,7 @@ export default function OrderDetailPage() {
         )}
 
         {order.items.map((item) => (
-          <GarmentCard key={item.id} item={item} onRefresh={load} />
+          <GarmentCard key={item.id} item={item} onRefresh={load} onDelete={() => deleteGarment(item.id)} />
         ))}
       </div>
 
