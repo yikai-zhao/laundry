@@ -1,0 +1,80 @@
+export interface User {
+  id: string;
+  username: string;
+  role: string;
+  display_name: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  created_at: string;
+}
+
+export interface Photo {
+  id: string;
+  order_item_id: string;
+  file_path: string;
+  original_filename: string;
+  created_at: string;
+}
+
+export interface Issue {
+  id: string;
+  inspection_id: string;
+  issue_type: string;
+  severity_level: number;
+  position_desc: string;
+  confidence_score: number | null;
+  source: string;
+  bbox_x: number | null;
+  bbox_y: number | null;
+  bbox_w: number | null;
+  bbox_h: number | null;
+  created_at: string;
+}
+
+export interface Inspection {
+  id: string;
+  order_item_id: string;
+  status: string;
+  issues: Issue[];
+  created_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  garment_type: string;
+  color: string | null;
+  brand: string | null;
+  note: string | null;
+  photos: Photo[];
+  inspection: Inspection | null;
+  created_at: string;
+}
+
+export interface Confirmation {
+  id: string;
+  order_id: string;
+  token: string;
+  status: string;
+  customer_name: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+  signature: { id: string; signature_data: string; created_at: string } | null;
+}
+
+export interface Order {
+  id: string;
+  customer_id: string;
+  status: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string | null;
+  customer: Customer;
+  items: OrderItem[];
+  confirmation: Confirmation | null;
+}
