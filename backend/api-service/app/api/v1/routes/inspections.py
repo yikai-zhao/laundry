@@ -54,7 +54,8 @@ def mock_ai_detect() -> list[dict]:
     return results
 
 
-def ai_detect_openai(photo_file_paths: list[str], garment_type: str) -> list[dict]:
+def ai_detect_openai(photo_file_paths: list[str], garment_type: str,
+                      color: str = "", brand: str = "", note: str = "") -> list[dict]:
     """Use GPT-4o Vision to detect garment defects. Falls back to mock on any error."""
     try:
         import openai
@@ -66,7 +67,6 @@ def ai_detect_openai(photo_file_paths: list[str], garment_type: str) -> list[dic
             fname = os.path.basename(file_path)
             full_path = os.path.join(settings.STORAGE_ROOT, "photos", fname)
             if not os.path.exists(full_path):
-                # Try direct join
                 full_path = os.path.join(settings.STORAGE_ROOT, file_path.lstrip("/storage/"))
             if not os.path.exists(full_path):
                 continue
@@ -85,35 +85,49 @@ def ai_detect_openai(photo_file_paths: list[str], garment_type: str) -> list[dic
         if not images_content:
             return mock_ai_detect()
 
-        prompt = f"""You are an experienced professional dry cleaning garment inspector. Carefully examine the photos of this [{garment_type}] and identify all real, visible issues.
+        garment_desc = garment_type
+        if color or brand:
+            garment_desc += f" ({', '.join(filter(None, [color, brand]))})"
+        staff_note = f"\nStaff notes: {note}" if note else ""
 
-Return STRICTLY in JSON format:
+        prompt = f"""You are an expert professional dry-cleaning and garment inspection specialist with 20+ years of experience. Perform a thorough inspection of this {garment_desc}.{staff_note}
+
+Examine every part of the garment carefully: fabric surface, seams, buttons, zippers, cuffs, collar, pockets, lining, hems. Identify ALL visible defects that would affect cleaning or require special treatment.
+
+Return ONLY valid JSON in this exact format:
 {{
   "issues": [
     {{
-      "issue_type": "issue type code",
-      "severity_level": integer severity,
-      "position_desc": "specific location description",
-      "confidence_score": float confidence
+      "issue_type": "<type_code>",
+      "severity_level": <1|2|3>,
+      "position_desc": "<precise location>",
+      "confidence_score": <0.0-1.0>,
+      "bbox_x": <0.0-1.0>,
+      "bbox_y": <0.0-1.0>,
+      "bbox_w": <0.0-1.0>,
+      "bbox_h": <0.0-1.0>
     }}
   ]
 }}
 
-Available issue type codes:
-- stain: stains, oil marks, water marks
-- tear: tears, rips
-- hole: holes, punctures
-- wear: abrasion, fading from wear
-- wrinkle: stubborn wrinkles
-- fade: color fading, discoloration
-- missing_button: missing buttons
-- zipper: zipper damage
-- pilling: fabric pilling
-- other: other issues
+Issue type codes:
+- stain: any stains (food, oil, ink, wine, water marks, perspiration rings)
+- tear: fabric tears, rips, fraying seams
+- hole: holes, moth damage, punctures  
+- wear: abrasion, thinning fabric from repeated use
+- wrinkle: set-in stubborn wrinkles, creases that need pressing
+- fade: color fading, bleaching, discoloration, yellowing
+- missing_button: missing or loose buttons, snaps
+- zipper: zipper damage, stuck zipper, missing pull
+- pilling: fabric pilling, lint balls
+- other: anything else needing attention
 
-Severity: 1=minor, 2=moderate, 3=severe
+Severity: 1=minor (cosmetic), 2=moderate (noticeable, needs treatment), 3=severe (significant damage)
+Confidence: your certainty this is a real issue (0.0-1.0)
+BBox: normalized coordinates of where in the image the issue is located (0,0 = top-left). Use approximate values if needed.
+Position: be specific — not just "front" but "front left chest near second button", "inside right collar seam", "lower hem left side".
 
-Rules: Only report issues that are truly visible in the photos. If the garment looks fine, return an empty issues array. Position descriptions should be specific (e.g. "front left chest", "collar edge", "left elbow area")."""
+CRITICAL: Only report genuinely visible issues. Do NOT invent issues. If the garment looks clean and undamaged, return an empty issues array."""
 
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -122,7 +136,8 @@ Rules: Only report issues that are truly visible in the photos. If the garment l
                 "content": [{"type": "text", "text": prompt}, *images_content],
             }],
             response_format={"type": "json_object"},
-            max_tokens=1500,
+            max_tokens=2000,
+            temperature=0,
         )
 
         result = json.loads(response.choices[0].message.content)
@@ -138,6 +153,10 @@ Rules: Only report issues that are truly visible in the photos. If the garment l
                 "severity_level": min(3, max(1, int(iss.get("severity_level", 1)))),
                 "position_desc": str(iss.get("position_desc", ""))[:200],
                 "confidence_score": min(1.0, max(0.0, float(iss.get("confidence_score", 0.85)))),
+                "bbox_x": iss.get("bbox_x"),
+                "bbox_y": iss.get("bbox_y"),
+                "bbox_w": iss.get("bbox_w"),
+                "bbox_h": iss.get("bbox_h"),
             })
         return normalized
 
@@ -189,7 +208,12 @@ def trigger_detection(inspection_id: str, db: Session = Depends(get_db), _user: 
 
     # Run AI detection (real or mock fallback)
     if settings.OPENAI_API_KEY:
-        ai_issues = ai_detect_openai(photo_paths, garment_type)
+        ai_issues = ai_detect_openai(
+            photo_paths, garment_type,
+            color=item.color or "" if item else "",
+            brand=item.brand or "" if item else "",
+            note=item.note or "" if item else "",
+        )
     else:
         ai_issues = mock_ai_detect()
 
