@@ -1,0 +1,161 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. Build & push backend Docker image to ECR
+  # ─────────────────────────────────────────────
+  build-backend:
+    name: Build & Push Backend
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag and push image
+        id: build
+        env:
+          REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: laundry/backend
+          IMAGE_TAG:  ${{ github.sha }}
+        run: |
+          docker build \
+            -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
+            -t $REGISTRY/$REPOSITORY:latest \
+            ./backend/api-service
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$REPOSITORY:latest
+          echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+  # ─────────────────────────────────────────────
+  # 2. Deploy new backend image to ECS
+  # ─────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend to ECS
+    runs-on: ubuntu-latest
+    needs: build-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition laundry-backend \
+            --query taskDefinition \
+            > task-def.json
+
+      - name: Update image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def.json
+          container-name:  backend
+          image:           ${{ needs.build-backend.outputs.image }}
+
+      - name: Deploy to ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service:         laundry-backend
+          cluster:         laundry
+          wait-for-service-stability: true
+
+  # ─────────────────────────────────────────────
+  # 3. Build frontends and deploy to S3 + CF
+  # ─────────────────────────────────────────────
+  deploy-frontends:
+    name: Deploy Frontends
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    strategy:
+      matrix:
+        include:
+          - app: staff-app
+            dir: frontend/staff-app
+            bucket_secret: S3_STAFF_BUCKET
+            cf_secret:     CF_STAFF_ID
+            vite_api_url:  ${{ format('https://api.{0}', vars.DOMAIN_NAME) }}
+          - app: customer-sign
+            dir: frontend/customer-sign
+            bucket_secret: S3_CUSTOMER_BUCKET
+            cf_secret:     CF_CUSTOMER_ID
+            vite_api_url:  ${{ format('https://api.{0}', vars.DOMAIN_NAME) }}
+          - app: admin-dashboard
+            dir: frontend/admin-dashboard
+            bucket_secret: S3_ADMIN_BUCKET
+            cf_secret:     CF_ADMIN_ID
+            vite_api_url:  ${{ format('https://api.{0}', vars.DOMAIN_NAME) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.dir }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.dir }}
+        run: npm ci
+
+      - name: Build
+        working-directory: ${{ matrix.dir }}
+        env:
+          VITE_API_BASE_URL: ${{ format('https://api.{0}', vars.DOMAIN_NAME) }}
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync ${{ matrix.dir }}/dist \
+            s3://${{ secrets[matrix.bucket_secret] }} \
+            --delete \
+            --cache-control "max-age=31536000,immutable" \
+            --exclude "index.html"
+
+          # index.html must not be cached (SPA entry point)
+          aws s3 cp ${{ matrix.dir }}/dist/index.html \
+            s3://${{ secrets[matrix.bucket_secret] }}/index.html \
+            --cache-control "no-cache,no-store,must-revalidate"
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets[matrix.cf_secret] }} \
+            --paths "/*"

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
 from app.core.config import settings
+from app.core.storage import get_photo_bytes
 from app.db.database import get_db
 from app.models.models import (
     AppUser,
@@ -63,15 +64,10 @@ def ai_detect_openai(photo_file_paths: list[str], garment_type: str,
 
         images_content = []
         for file_path in photo_file_paths[:4]:
-            # file_path stored as "/storage/photos/uuid.ext"
-            fname = os.path.basename(file_path)
-            full_path = os.path.join(settings.STORAGE_ROOT, "photos", fname)
-            if not os.path.exists(full_path):
-                full_path = os.path.join(settings.STORAGE_ROOT, file_path.lstrip("/storage/"))
-            if not os.path.exists(full_path):
+            img_bytes = get_photo_bytes(file_path)
+            if img_bytes is None:
                 continue
-            with open(full_path, "rb") as f:
-                img_data = base64.b64encode(f.read()).decode()
+            img_data = base64.b64encode(img_bytes).decode()
             ext = os.path.splitext(file_path)[1].lower().lstrip(".")
             mime = {
                 "jpg": "image/jpeg", "jpeg": "image/jpeg",
