@@ -87,3 +87,26 @@ def generate_confirmation(order_id: str, db: Session = Depends(get_db), _user: A
     db.commit()
     db.refresh(confirmation)
     return confirmation.to_dict()
+
+
+class StatusUpdate(BaseModel):
+    status: str
+
+
+@router.patch("/{order_id}/status")
+def update_order_status(
+    order_id: str,
+    payload: StatusUpdate,
+    db: Session = Depends(get_db),
+    _user: AppUser = Depends(get_current_user),
+):
+    order = db.query(LaundryOrder).filter(LaundryOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    valid_statuses = [s.value for s in OrderStatus]
+    if payload.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Valid: {valid_statuses}")
+    order.status = payload.status
+    db.commit()
+    db.refresh(order)
+    return order.to_dict(include_details=True)

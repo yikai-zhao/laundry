@@ -29,6 +29,8 @@ class OrderStatus(str, enum.Enum):
     INSPECTION_COMPLETED = "inspection_completed"
     AWAITING_CONFIRMATION = "awaiting_customer_confirmation"
     CONFIRMED = "confirmed"
+    READY_FOR_PICKUP = "ready_for_pickup"
+    PICKED_UP = "picked_up"
 
 
 class InspectionStatus(str, enum.Enum):
