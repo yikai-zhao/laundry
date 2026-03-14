@@ -40,23 +40,23 @@ export default function NewOrderPage() {
 
   return (
     <div className="max-w-lg mx-auto p-4">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">新建订单</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">New Order</h1>
 
       {/* Customer Selection */}
       <div className="bg-white border rounded-xl p-4 mb-4">
-        <h2 className="font-semibold text-gray-700 mb-3">选择客户</h2>
+        <h2 className="font-semibold text-gray-700 mb-3">Select Customer</h2>
         {selected ? (
           <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-lg">
             <div>
               <div className="font-medium">{selected.name}</div>
               {selected.phone && <div className="text-xs text-gray-500">{selected.phone}</div>}
             </div>
-            <button onClick={() => setSelected(null)} className="text-sm text-indigo-600">重新选择</button>
+            <button onClick={() => setSelected(null)} className="text-sm text-indigo-600">Change</button>
           </div>
         ) : (
           <>
             <input
-              placeholder="搜索客户姓名或手机号..."
+              placeholder="Search by name or phone..."
               className="w-full border rounded-lg px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -75,25 +75,25 @@ export default function NewOrderPage() {
             </div>
             {!showNew ? (
               <button onClick={() => setShowNew(true)} className="text-sm text-indigo-600 font-medium">
-                + 新建客户
+                + New Customer
               </button>
             ) : (
               <div className="border-t pt-3 space-y-2">
                 <input
-                  placeholder="客户姓名 *"
+                  placeholder="Customer name *"
                   className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                 />
                 <input
-                  placeholder="手机号"
+                  placeholder="Phone number"
                   className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                 />
                 <div className="flex gap-2">
-                  <button onClick={createCustomer} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm">保存</button>
-                  <button onClick={() => setShowNew(false)} className="text-sm text-gray-500">取消</button>
+                  <button onClick={createCustomer} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm">Save</button>
+                  <button onClick={() => setShowNew(false)} className="text-sm text-gray-500">Cancel</button>
                 </div>
               </div>
             )}
@@ -103,13 +103,13 @@ export default function NewOrderPage() {
 
       {/* Order Note */}
       <div className="bg-white border rounded-xl p-4 mb-4">
-        <h2 className="font-semibold text-gray-700 mb-3">备注（可选）</h2>
+        <h2 className="font-semibold text-gray-700 mb-3">Note (optional)</h2>
         <textarea
           className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="特殊要求或备注..."
+          placeholder="Special instructions or notes..."
         />
       </div>
 
@@ -118,7 +118,7 @@ export default function NewOrderPage() {
         disabled={!selected || loading}
         className="w-full bg-indigo-600 text-white py-3 rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
       >
-        {loading ? "提交中..." : "创建订单"}
+        {loading ? "Creating..." : "Create Order"}
       </button>
     </div>
   );

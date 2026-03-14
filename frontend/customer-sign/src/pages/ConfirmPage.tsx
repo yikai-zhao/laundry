@@ -39,19 +39,19 @@ export default function ConfirmPage() {
   };
 
   const ISSUE_LABEL: Record<string, string> = {
-    stain: "污渍", tear: "撕裂", hole: "破洞", wear: "磨损",
-    wrinkle: "褶皱", fade: "褪色", missing_button: "缺扣子",
-    zipper: "拉链问题", pilling: "起球", other: "其他",
+    stain: "Stain", tear: "Tear", hole: "Hole", wear: "Wear",
+    wrinkle: "Wrinkle", fade: "Fade", missing_button: "Missing Button",
+    zipper: "Zipper Issue", pilling: "Pilling", other: "Other",
   };
-  const SEV_LABEL: Record<number, string> = { 1: "轻微", 2: "中等", 3: "严重" };
+  const SEV_LABEL: Record<number, string> = { 1: "Minor", 2: "Moderate", 3: "Severe" };
   const SEV_COLOR: Record<number, string> = { 1: "text-yellow-600 bg-yellow-50", 2: "text-orange-600 bg-orange-50", 3: "text-red-600 bg-red-50" };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">加载中...</div>;
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-400">Loading...</div>;
   if (error) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="text-5xl mb-4">⚠️</div>
-        <p className="text-red-500 font-medium">{error === "Invalid or expired link" ? "链接无效或已过期" : error}</p>
+        <p className="text-red-500 font-medium">{error}</p>
       </div>
     </div>
   );
@@ -60,8 +60,8 @@ export default function ConfirmPage() {
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="text-5xl mb-4">✅</div>
-        <p className="text-green-600 font-semibold text-lg">已完成签字确认</p>
-        <p className="text-gray-500 text-sm mt-1">{data.customer_name}</p>
+        <p className="text-green-600 font-semibold text-lg">Already Confirmed</p>
+        <p className="text-gray-500 text-sm mt-1">Signed by {data.customer_name}</p>
       </div>
     </div>
   );
@@ -73,23 +73,23 @@ export default function ConfirmPage() {
     <div className="max-w-lg mx-auto p-4 pb-20 space-y-4">
       {/* Header */}
       <div className="text-center py-4">
-        <h1 className="text-xl font-bold text-gray-800">🧥 验衣检查报告</h1>
-        <p className="text-sm text-gray-500 mt-1">请仔细查阅下方验衣结果，确认无误后签字</p>
+        <h1 className="text-xl font-bold text-gray-800">🧥 Garment Inspection Report</h1>
+        <p className="text-sm text-gray-500 mt-1">Please review the inspection below and sign to confirm</p>
       </div>
 
       {/* Order info */}
       <div className="bg-white rounded-xl border p-4">
-        <div className="text-sm text-gray-500">客户：<span className="text-gray-800 font-medium">{order.customer.name}</span></div>
-        <div className="text-sm text-gray-500 mt-1">日期：{new Date(order.created_at).toLocaleDateString("zh-CN")}</div>
-        {order.note && <div className="text-sm text-gray-500 mt-1">备注：{order.note}</div>}
-        <div className="text-sm text-gray-500 mt-1">共 {order.items.length} 件衣物 · 发现 {totalIssues} 个问题</div>
+        <div className="text-sm text-gray-500">Customer: <span className="text-gray-800 font-medium">{order.customer.name}</span></div>
+        <div className="text-sm text-gray-500 mt-1">Date: {new Date(order.created_at).toLocaleDateString()}</div>
+        {order.note && <div className="text-sm text-gray-500 mt-1">Note: {order.note}</div>}
+        <div className="text-sm text-gray-500 mt-1">{order.items.length} item{order.items.length > 1 ? "s" : ""} · {totalIssues} issue{totalIssues !== 1 ? "s" : ""} found</div>
       </div>
 
       {/* Garments */}
       {order.items.map((item, idx) => (
         <div key={item.id} className="bg-white rounded-xl border p-4 space-y-3">
           <h3 className="font-semibold">
-            {idx + 1}. {item.garment_type || "衣物"}
+            {idx + 1}. {item.garment_type || "Garment"}
             {item.color && <span className="text-gray-400 font-normal"> · {item.color}</span>}
             {item.brand && <span className="text-gray-400 font-normal"> · {item.brand}</span>}
           </h3>
@@ -117,17 +117,17 @@ export default function ConfirmPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-green-600">✓ 未发现问题</p>
+            <p className="text-sm text-green-600">✓ No issues found</p>
           )}
         </div>
       ))}
 
       {/* Signature section */}
       <div className="bg-white rounded-xl border p-4 space-y-3">
-        <h3 className="font-semibold text-gray-700">客户签字确认</h3>
-        <p className="text-xs text-gray-500">签字即代表您已查阅以上验衣报告，并确认检测结果无误。</p>
+        <h3 className="font-semibold text-gray-700">Your Confirmation</h3>
+        <p className="text-xs text-gray-500">By signing below, you confirm that you have reviewed the inspection results above and agree with the findings.</p>
         <input
-          placeholder="您的姓名"
+          placeholder="Your name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="w-full border rounded-lg px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
@@ -138,7 +138,7 @@ export default function ConfirmPage() {
           disabled={!name.trim() || !signature || submitting}
           className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 transition"
         >
-          {submitting ? "提交中..." : "确认签字"}
+          {submitting ? "Submitting..." : "Confirm & Sign"}
         </button>
       </div>
     </div>

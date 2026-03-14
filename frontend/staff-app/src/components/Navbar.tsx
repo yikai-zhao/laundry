@@ -16,13 +16,13 @@ export default function Navbar() {
   return (
     <nav className="bg-indigo-700 text-white px-4 py-2.5 flex justify-between items-center shadow-sm">
       <div className="flex items-center gap-5">
-        <Link to="/orders" className="font-bold text-lg">🧥 干洗验衣</Link>
-        <Link to="/orders" className="text-sm text-indigo-200 hover:text-white transition">订单</Link>
-        <Link to="/orders/new" className="text-sm text-indigo-200 hover:text-white transition">+ 新建</Link>
+        <Link to="/orders" className="font-bold text-lg">🧥 Laundry Inspector</Link>
+        <Link to="/orders" className="text-sm text-indigo-200 hover:text-white transition">Orders</Link>
+        <Link to="/orders/new" className="text-sm text-indigo-200 hover:text-white transition">+ New</Link>
       </div>
       <div className="flex items-center gap-3">
         <span className="text-sm text-indigo-200">{user.display_name || user.username}</span>
-        <button onClick={handleLogout} className="text-sm text-indigo-300 hover:text-white transition">登出</button>
+        <button onClick={handleLogout} className="text-sm text-indigo-300 hover:text-white transition">Log out</button>
       </div>
     </nav>
   );

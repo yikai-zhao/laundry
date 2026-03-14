@@ -27,11 +27,11 @@ VALID_ISSUE_TYPES = {
     "fade", "missing_button", "zipper", "pilling", "other",
 }
 
-CHINESE_POSITIONS = [
-    "前胸左侧", "前胸右侧", "前胸中部", "后背上方",
-    "后背中部", "领口区域", "左袖口", "右袖口",
-    "左肩部", "右肩部", "腰部区域", "下摆处",
-    "左袖肘部", "右袖肘部", "口袋处",
+ENGLISH_POSITIONS = [
+    "Front left chest", "Front right chest", "Front center", "Upper back",
+    "Mid back", "Collar area", "Left cuff", "Right cuff",
+    "Left shoulder", "Right shoulder", "Waist area", "Hem",
+    "Left elbow", "Right elbow", "Pocket area",
 ]
 
 
@@ -44,7 +44,7 @@ def mock_ai_detect() -> list[dict]:
         results.append({
             "issue_type": random.choice(issue_types),
             "severity_level": random.randint(1, 2),
-            "position_desc": random.choice(CHINESE_POSITIONS),
+            "position_desc": random.choice(ENGLISH_POSITIONS),
             "bbox_x": round(random.uniform(0.1, 0.8), 2),
             "bbox_y": round(random.uniform(0.1, 0.8), 2),
             "bbox_w": round(random.uniform(0.05, 0.2), 2),
@@ -85,35 +85,35 @@ def ai_detect_openai(photo_file_paths: list[str], garment_type: str) -> list[dic
         if not images_content:
             return mock_ai_detect()
 
-        prompt = f"""你是一名经验丰富的专业干洗店验衣师。请仔细检查这件【{garment_type}】的照片，找出所有真实存在的问题。
+        prompt = f"""You are an experienced professional dry cleaning garment inspector. Carefully examine the photos of this [{garment_type}] and identify all real, visible issues.
 
-请严格以JSON格式返回，格式如下：
+Return STRICTLY in JSON format:
 {{
   "issues": [
     {{
-      "issue_type": "问题类型英文代码",
-      "severity_level": 严重程度整数,
-      "position_desc": "具体位置（中文）",
-      "confidence_score": 置信度小数
+      "issue_type": "issue type code",
+      "severity_level": integer severity,
+      "position_desc": "specific location description",
+      "confidence_score": float confidence
     }}
   ]
 }}
 
-可用问题类型代码：
-- stain：污渍/油渍/水渍
-- tear：撕裂/划破
-- hole：破洞/穿孔
-- wear：磨损/磨白/起毛
-- wrinkle：顽固褶皱
-- fade：褪色/色差
-- missing_button：缺扣子
-- zipper：拉链损坏
-- pilling：起球
-- other：其他问题
+Available issue type codes:
+- stain: stains, oil marks, water marks
+- tear: tears, rips
+- hole: holes, punctures
+- wear: abrasion, fading from wear
+- wrinkle: stubborn wrinkles
+- fade: color fading, discoloration
+- missing_button: missing buttons
+- zipper: zipper damage
+- pilling: fabric pilling
+- other: other issues
 
-严重程度：1=轻微，2=中等，3=严重
+Severity: 1=minor, 2=moderate, 3=severe
 
-规则：只报告照片中真实可见的问题。如衣物完好，返回空issues数组。位置描述要具体（如：前胸左侧、领口边缘、左袖肘部）。"""
+Rules: Only report issues that are truly visible in the photos. If the garment looks fine, return an empty issues array. Position descriptions should be specific (e.g. "front left chest", "collar edge", "left elbow area")."""
 
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -176,7 +176,7 @@ def trigger_detection(inspection_id: str, db: Session = Depends(get_db), _user: 
 
     # Get garment info and photos for AI
     item = db.query(LaundryOrderItem).filter(LaundryOrderItem.id == insp.order_item_id).first()
-    garment_type = item.garment_type if item else "衣物"
+    garment_type = item.garment_type if item else "garment"
     photo_paths = [p.file_path for p in item.photos] if item else []
 
     # Remove old AI issues
