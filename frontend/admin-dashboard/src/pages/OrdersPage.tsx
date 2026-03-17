@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../services/api";
-import { useAuthStore } from "../store/auth";
+import NavBar from "../components/NavBar";
 import type { Order } from "../types";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -29,8 +29,6 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
-  const logout = useAuthStore((s) => s.logout);
-  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -41,19 +39,7 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-slate-800 text-white px-6 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <h1 className="font-bold text-lg">Admin</h1>
-          <Link to="/dashboard" className="text-sm hover:text-slate-300">Dashboard</Link>
-          <Link to="/orders" className="text-sm text-white font-medium">Orders</Link>
-          <Link to="/customers" className="text-sm hover:text-slate-300">Customers</Link>
-          <Link to="/staff" className="text-sm hover:text-slate-300">Staff</Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-slate-300">{user?.display_name || user?.username}</span>
-          <button onClick={logout} className="text-sm text-slate-400 hover:text-white">Logout</button>
-        </div>
-      </nav>
+      <NavBar />
 
       <div className="max-w-5xl mx-auto p-6 space-y-4">
         <h2 className="text-2xl font-bold text-gray-800">All Orders</h2>

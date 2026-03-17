@@ -13,7 +13,7 @@
 | **Staff App** | React + TypeScript + Tailwind | 5173 | 店员操作端：接单、拍照、AI检测、编辑问题、生成确认码 |
 | **Customer Sign** | React + TypeScript + Tailwind | 5174 | 客户签字端：扫码查看检衣报告，手写签名确认 |
 | **Admin Dashboard** | React + TypeScript + Tailwind | 5175 | 管理后台：数据看板、订单管理、客户管理 |
-| **Backend API** | Python FastAPI + SQLAlchemy | 8000 | RESTful API，JWT 认证，文件上传，AI 检测（Mock） |
+| **Backend API** | Python FastAPI + SQLAlchemy | 8000 | RESTful API，JWT 认证，文件上传，GPT-4o Vision AI 检测 |
 | **PostgreSQL** | PostgreSQL 15 | 5432 | 生产数据库（开发环境使用 SQLite） |
 
 ---

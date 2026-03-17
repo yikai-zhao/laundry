@@ -140,6 +140,7 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceInput, setPriceInput] = useState(String(item.unit_price ?? 0));
   const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
+  const [aiNotConfigured, setAiNotConfigured] = useState(false);
 
   const savePrice = async () => {
     const price = parseFloat(priceInput) || 0;
@@ -166,30 +167,21 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
     }
     setUploading(false);
     if (!item.inspection || item.inspection.issues.length === 0) {
-      await triggerDetectAuto();
+      await triggerDetect();
     } else {
-      onRefresh();
-    }
-  };
-
-  const triggerDetectAuto = async () => {
-    setDetecting(true);
-    try {
-      const { data: insp } = await api.post(`/order-items/${item.id}/inspection`);
-      await api.post(`/inspections/${insp.id}/detect`);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setDetecting(false);
       onRefresh();
     }
   };
 
   const triggerDetect = async () => {
     setDetecting(true);
+    setAiNotConfigured(false);
     try {
       const { data: insp } = await api.post(`/order-items/${item.id}/inspection`);
-      await api.post(`/inspections/${insp.id}/detect`);
+      const { data: result } = await api.post(`/inspections/${insp.id}/detect`);
+      if (result.ai_not_configured) {
+        setAiNotConfigured(true);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -348,6 +340,12 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
             <div className="flex items-center gap-2 mt-2 text-xs text-violet-600 bg-violet-50 rounded-lg px-3 py-2">
               <div className="w-3 h-3 border-2 border-violet-400 border-t-violet-700 rounded-full animate-spin shrink-0" />
               AI is analyzing garment photos…
+            </div>
+          )}
+
+          {aiNotConfigured && (
+            <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+              ⚠ AI detection is not configured (OPENAI_API_KEY not set). You can still add issues manually below.
             </div>
           )}
         </div>

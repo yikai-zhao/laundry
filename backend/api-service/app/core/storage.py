@@ -5,10 +5,13 @@ Storage abstraction layer.
 - In production (when AWS_S3_BUCKET is set): uploads to S3
   Photos are still served via a /storage proxy in dev, but via CloudFront/S3 URL in prod.
 """
+import logging
 import os
 import uuid
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 _s3_client = None
 
@@ -70,7 +73,7 @@ def delete_photo(file_path: str):
                 Key=f"photos/{filename}",
             )
         except Exception as e:
-            print(f"[Storage] S3 delete failed for {filename}: {e}")
+            logger.error("S3 delete failed for %s: %s", filename, e)
     else:
         local_path = os.path.join(settings.STORAGE_ROOT, "photos", filename)
         try:
@@ -92,7 +95,7 @@ def get_photo_bytes(file_path: str) -> bytes | None:
             )
             return response["Body"].read()
         except Exception as e:
-            print(f"[Storage] S3 read failed for {filename}: {e}")
+            logger.error("S3 read failed for %s: %s", filename, e)
             return None
     else:
         local_path = os.path.join(settings.STORAGE_ROOT, "photos", filename)

@@ -1,7 +1,7 @@
 import base64
 import json
+import logging
 import os
-import random
 import time
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,6 +23,8 @@ from app.models.models import (
     LaundryOrderItem,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 VALID_ISSUE_TYPES = {
@@ -30,42 +32,12 @@ VALID_ISSUE_TYPES = {
     "fade", "missing_button", "zipper", "pilling", "other",
 }
 
-ENGLISH_POSITIONS = [
-    "Front left chest", "Front right chest", "Front center", "Upper back",
-    "Mid back", "Collar area", "Left cuff", "Right cuff",
-    "Left shoulder", "Right shoulder", "Waist area", "Hem",
-    "Left elbow", "Right elbow", "Pocket area",
-]
-
-
-def mock_ai_detect() -> list[dict]:
-    """Fallback mock when OpenAI is not configured."""
-    issue_types = list(VALID_ISSUE_TYPES - {"other"})
-    n = random.randint(0, 2)
-    results = []
-    for _ in range(n):
-        results.append({
-            "issue_type": random.choice(issue_types),
-            "severity_level": random.randint(1, 2),
-            "position_desc": random.choice(ENGLISH_POSITIONS),
-            "bbox_x": round(random.uniform(0.1, 0.8), 2),
-            "bbox_y": round(random.uniform(0.1, 0.8), 2),
-            "bbox_w": round(random.uniform(0.05, 0.2), 2),
-            "bbox_h": round(random.uniform(0.05, 0.2), 2),
-            "confidence_score": round(random.uniform(0.70, 0.92), 2),
-        })
-    return results
-
 
 def ai_detect_openai(photo_file_paths: list[str], garment_type: str,
                       color: str = "", brand: str = "", note: str = "") -> list[dict]:
-    """Use GPT-4o Vision to detect garment defects. Falls back to mock on any error."""
-    try:
-        import openai
-        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-    except Exception as e:
-        print(f"[AI Detection] OpenAI import/init failed: {e}")
-        return mock_ai_detect()
+    """Use GPT-4o Vision to detect garment defects."""
+    import openai
+    client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
 
     images_content = []
     for file_path in photo_file_paths[:4]:
@@ -84,7 +56,8 @@ def ai_detect_openai(photo_file_paths: list[str], garment_type: str,
         })
 
     if not images_content:
-        return mock_ai_detect()
+        logger.warning("No loadable images found for AI detection")
+        return []
 
     garment_desc = garment_type
     if color or brand:
@@ -165,12 +138,12 @@ CRITICAL: Only report genuinely visible issues. Do NOT invent issues. If the gar
             return normalized
         except Exception as retry_err:
             last_err = retry_err
-            print(f"[AI Detection] Attempt {attempt+1}/3 failed: {type(retry_err).__name__}: {retry_err}")
+            logger.warning("AI Detection attempt %d/3 failed: %s: %s", attempt + 1, type(retry_err).__name__, retry_err)
             if attempt < 2:
                 time.sleep(1)
 
-    print(f"[AI Detection] All retries failed, using mock. Last error: {last_err}")
-    return mock_ai_detect()
+    logger.error("AI Detection all 3 retries failed. Last error: %s", last_err)
+    raise HTTPException(status_code=502, detail="AI detection failed after 3 retries. Please try again later.")
 
 
 @router.post("/order-items/{item_id}/inspection")
@@ -214,16 +187,21 @@ def trigger_detection(inspection_id: str, db: Session = Depends(get_db), _user: 
     insp.status = InspectionStatus.DETECTING
     db.commit()
 
-    # Run AI detection (real or mock fallback)
-    if settings.OPENAI_API_KEY:
-        ai_issues = ai_detect_openai(
-            photo_paths, garment_type,
-            color=item.color or "" if item else "",
-            brand=item.brand or "" if item else "",
-            note=item.note or "" if item else "",
-        )
-    else:
-        ai_issues = mock_ai_detect()
+    # Run AI detection
+    if not settings.OPENAI_API_KEY:
+        insp.status = InspectionStatus.COMPLETED
+        db.commit()
+        db.refresh(insp)
+        result = insp.to_dict()
+        result["ai_not_configured"] = True
+        return result
+
+    ai_issues = ai_detect_openai(
+        photo_paths, garment_type,
+        color=item.color or "" if item else "",
+        brand=item.brand or "" if item else "",
+        note=item.note or "" if item else "",
+    )
 
     ai_result = InspectionAIResult(inspection_id=inspection_id, raw_result=json.dumps(ai_issues))
     db.add(ai_result)
