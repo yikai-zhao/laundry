@@ -13,12 +13,24 @@ export interface Customer {
   created_at: string;
 }
 
+export interface PhotoQuality {
+  ok: boolean;
+  blur_score: number;
+  brightness: number;
+  width: number;
+  height: number;
+  warnings: string[];
+}
+
 export interface Photo {
   id: string;
   order_item_id: string;
   file_path: string;
   original_filename: string;
+  photo_label: string | null;
+  annotated_file_path: string | null;
   created_at: string;
+  quality?: PhotoQuality;
 }
 
 export interface Issue {
@@ -34,6 +46,7 @@ export interface Issue {
   bbox_w: number | null;
   bbox_h: number | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 export interface Inspection {
@@ -41,7 +54,9 @@ export interface Inspection {
   order_item_id: string;
   status: string;
   issues: Issue[];
+  inspector: User | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 export interface OrderItem {

@@ -153,6 +153,8 @@ class GarmentPhoto(Base):
     order_item_id = Column(String, ForeignKey("laundry_order_items.id"), nullable=False)
     file_path = Column(String, nullable=False)
     original_filename = Column(String)
+    photo_label = Column(String)  # "front", "back", "detail", "collar", "cuff", "hem"
+    annotated_file_path = Column(String)  # AI-annotated image path
     created_at = Column(DateTime, default=_now)
 
     order_item = relationship("LaundryOrderItem", back_populates="photos")
@@ -163,6 +165,8 @@ class GarmentPhoto(Base):
             "order_item_id": self.order_item_id,
             "file_path": self.file_path,
             "original_filename": self.original_filename,
+            "photo_label": self.photo_label,
+            "annotated_file_path": self.annotated_file_path,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -171,11 +175,13 @@ class InspectionRecord(Base):
     __tablename__ = "inspection_records"
     id = Column(String, primary_key=True, default=_uuid)
     order_item_id = Column(String, ForeignKey("laundry_order_items.id"), nullable=False)
+    inspector_id = Column(String, ForeignKey("app_users.id"), nullable=True)
     status = Column(String, default=InspectionStatus.PENDING)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, default=_now, onupdate=_now)
 
     order_item = relationship("LaundryOrderItem", back_populates="inspection")
+    inspector = relationship("AppUser", foreign_keys=[inspector_id])
     issues = relationship("InspectionIssue", back_populates="inspection", cascade="all, delete-orphan")
     ai_results = relationship("InspectionAIResult", back_populates="inspection", cascade="all, delete-orphan")
 
@@ -184,8 +190,10 @@ class InspectionRecord(Base):
             "id": self.id,
             "order_item_id": self.order_item_id,
             "status": self.status,
+            "inspector": self.inspector.to_dict() if self.inspector else None,
             "issues": [i.to_dict() for i in self.issues],
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 
@@ -203,6 +211,7 @@ class InspectionIssue(Base):
     confidence_score = Column(Float)
     source = Column(String, default="manual")
     created_at = Column(DateTime, default=_now)
+    updated_at = Column(DateTime, default=_now, onupdate=_now)
 
     inspection = relationship("InspectionRecord", back_populates="issues")
 
@@ -220,6 +229,7 @@ class InspectionIssue(Base):
             "confidence_score": self.confidence_score,
             "source": self.source,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 
@@ -273,5 +283,29 @@ class SignatureRecord(Base):
             "id": self.id,
             "confirmation_id": self.confirmation_id,
             "signature_data": self.signature_data,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class IssueEditHistory(Base):
+    __tablename__ = "issue_edit_history"
+    id = Column(String, primary_key=True, default=_uuid)
+    issue_id = Column(String, ForeignKey("inspection_issues.id"), nullable=False)
+    field_changed = Column(String, nullable=False)
+    old_value = Column(String)
+    new_value = Column(String)
+    changed_by = Column(String)
+    created_at = Column(DateTime, default=_now)
+
+    issue = relationship("InspectionIssue")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "issue_id": self.issue_id,
+            "field_changed": self.field_changed,
+            "old_value": self.old_value,
+            "new_value": self.new_value,
+            "changed_by": self.changed_by,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api, API_HOST, getCustomerSignBaseUrl } from "../services/api";
-import type { Order, OrderItem, Issue } from "../types";
+import type { Order, OrderItem, Issue, PhotoQuality } from "../types";
+import AnnotatedPhoto from "../components/AnnotatedPhoto";
 
 const GARMENT_PRESETS = [
   "Suit Jacket", "Dress Pants", "Shirt", "T-Shirt", "Sweater", "Knit Top",
@@ -138,6 +139,7 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceInput, setPriceInput] = useState(String(item.unit_price ?? 0));
+  const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
 
   const savePrice = async () => {
     const price = parseFloat(priceInput) || 0;
@@ -146,12 +148,21 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
     onRefresh();
   };
 
-  const uploadPhotos = async (files: FileList) => {
+  const uploadPhotos = async (files: FileList, label?: string) => {
     setUploading(true);
+    setQualityWarnings([]);
+    const allWarnings: string[] = [];
     for (const file of Array.from(files)) {
       const form = new FormData();
       form.append("file", file);
-      await api.post(`/order-items/${item.id}/photos`, form);
+      if (label) form.append("photo_label", label);
+      const { data } = await api.post(`/order-items/${item.id}/photos`, form);
+      if (data.quality && !data.quality.ok) {
+        allWarnings.push(...data.quality.warnings);
+      }
+    }
+    if (allWarnings.length > 0) {
+      setQualityWarnings(allWarnings);
     }
     setUploading(false);
     if (!item.inspection || item.inspection.issues.length === 0) {
@@ -211,7 +222,9 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
     <>
       {lightbox && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-lg" onClick={(e) => e.stopPropagation()} />
+          <div className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
+            <AnnotatedPhoto src={lightbox} issues={issues} className="max-w-full max-h-[80vh] rounded-lg" />
+          </div>
           <button className="absolute top-4 right-4 text-white text-2xl font-light" onClick={() => setLightbox(null)}>✕</button>
         </div>
       )}
@@ -275,16 +288,40 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
 
         {/* Photos */}
         <div className="px-4 py-3">
+          {/* Photo guidance */}
+          {item.photos.length === 0 && (
+            <div className="mb-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-700 space-y-1">
+              <p className="font-semibold">📸 Photo Guide:</p>
+              <p>• Front view (required) — full garment front</p>
+              <p>• Back view (required) — full garment back</p>
+              <p>• Detail shots (optional) — collar, cuffs, hem, stains</p>
+            </div>
+          )}
+
           <div className="flex gap-2 overflow-x-auto pb-1">
             {item.photos.map((p) => (
-              <button key={p.id} onClick={() => setLightbox(`${API_HOST}${p.file_path}`)} className="shrink-0">
-                <img src={`${API_HOST}${p.file_path}`} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition" />
-              </button>
+              <div key={p.id} className="shrink-0 relative">
+                <button onClick={() => setLightbox(`${API_HOST}${p.file_path}`)}>
+                  <img src={`${API_HOST}${p.file_path}`} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition" />
+                </button>
+                {p.photo_label && (
+                  <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-black/50 text-white px-1 rounded">{p.photo_label}</span>
+                )}
+              </div>
             ))}
             {item.photos.length === 0 && (
               <div className="w-full text-center py-4 text-xs text-gray-400">No photos yet — use Camera or Gallery below</div>
             )}
           </div>
+
+          {/* Quality warnings */}
+          {qualityWarnings.length > 0 && (
+            <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 space-y-1">
+              <p className="font-semibold">⚠ Image Quality Warning:</p>
+              {qualityWarnings.map((w, i) => <p key={i}>• {w}</p>)}
+              <p className="text-amber-600 font-medium mt-1">Consider re-taking the photo for better AI detection results.</p>
+            </div>
+          )}
 
           {/* Upload buttons */}
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
@@ -559,6 +596,12 @@ export default function OrderDetailPage() {
                 className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
               >
                 🖨 Receipt
+              </Link>
+              <Link
+                to={`/orders/${id}/report`}
+                className="text-xs px-2.5 py-1 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition"
+              >
+                📋 Report
               </Link>
             </div>
           </div>

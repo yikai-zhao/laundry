@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api, API_HOST } from "../services/api";
 import type { ConfirmationData } from "../types";
 import SignatureCanvas from "../components/SignatureCanvas";
+import AnnotatedPhoto from "../components/AnnotatedPhoto";
 
 export default function ConfirmPage() {
   const { token } = useParams<{ token: string }>();
@@ -94,11 +95,16 @@ export default function ConfirmPage() {
             {item.brand && <span className="text-gray-400 font-normal"> · {item.brand}</span>}
           </h3>
 
-          {/* Photos */}
+          {/* Photos with annotation overlay */}
           {item.photos.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {item.photos.map((p) => (
-                <img key={p.id} src={`${API_HOST}${p.file_path}`} alt="" className="w-24 h-24 object-cover rounded-lg border flex-shrink-0" />
+                <AnnotatedPhoto
+                  key={p.id}
+                  src={`${API_HOST}${p.file_path}`}
+                  issues={item.inspection?.issues || []}
+                  className="w-24 h-24 rounded-lg border flex-shrink-0 overflow-hidden"
+                />
               ))}
             </div>
           )}

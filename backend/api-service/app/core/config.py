@@ -1,5 +1,11 @@
 import os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # loads .env if present, silently ignored if missing
+except ImportError:
+    pass
+
 
 class Settings:
     SECRET_KEY: str = os.getenv("JWT_SECRET", "dev-secret-key-change-in-production")

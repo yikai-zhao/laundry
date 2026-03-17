@@ -1,10 +1,12 @@
 import os
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
 from app.core.config import settings
+from app.core.image_quality import check_image_quality
 from app.core.storage import delete_photo, save_photo
 from app.db.database import get_db
 from app.models.models import AppUser, GarmentPhoto, LaundryOrderItem
@@ -16,6 +18,7 @@ router = APIRouter()
 async def upload_photo(
     item_id: str,
     file: UploadFile,
+    photo_label: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     _user: AppUser = Depends(get_current_user),
 ):
@@ -29,11 +32,15 @@ async def upload_photo(
     if len(content) > settings.MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=400, detail=f"File too large. Max {settings.MAX_UPLOAD_SIZE // 1024 // 1024}MB")
 
+    # Image quality check
+    quality = check_image_quality(content)
+
     file_path, public_url = save_photo(content, ext)
     photo = GarmentPhoto(
         order_item_id=item_id,
         file_path=file_path,
         original_filename=file.filename,
+        photo_label=photo_label,
     )
     db.add(photo)
     db.commit()
@@ -42,6 +49,7 @@ async def upload_photo(
     # Return public_url so frontend can display from S3/CloudFront in prod
     if public_url != file_path:
         d["file_path"] = public_url
+    d["quality"] = quality
     return d
 
 

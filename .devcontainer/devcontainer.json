@@ -1,0 +1,35 @@
+{
+  "name": "Laundry AI Inspection",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+
+  "forwardPorts": [8000, 5173, 5174, 5175],
+  "portsAttributes": {
+    "8000": {
+      "label": "Backend API",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    },
+    "5173": {
+      "label": "Staff App",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "5174": {
+      "label": "Customer Sign",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    },
+    "5175": {
+      "label": "Admin Dashboard",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    }
+  },
+
+  "postCreateCommand": "pip install --break-system-packages -r backend/api-service/requirements.txt && cd frontend/staff-app && npm install && cd ../customer-sign && npm install && cd ../admin-dashboard && npm install",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
+  }
+}

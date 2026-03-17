@@ -2,6 +2,8 @@ export interface Photo {
   id: string;
   file_path: string;
   original_filename: string;
+  photo_label: string | null;
+  annotated_file_path: string | null;
 }
 
 export interface Issue {
@@ -11,6 +13,10 @@ export interface Issue {
   position_desc: string;
   source: string;
   confidence_score: number | null;
+  bbox_x: number | null;
+  bbox_y: number | null;
+  bbox_w: number | null;
+  bbox_h: number | null;
 }
 
 export interface Inspection {

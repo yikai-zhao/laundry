@@ -4,7 +4,7 @@ import SuccessPage from "./pages/SuccessPage";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/sign">
       <Routes>
         <Route path="/confirm/:token" element={<ConfirmPage />} />
         <Route path="/success" element={<SuccessPage />} />
