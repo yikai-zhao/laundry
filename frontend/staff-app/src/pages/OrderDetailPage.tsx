@@ -142,6 +142,12 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
   const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
   const [aiNotConfigured, setAiNotConfigured] = useState(false);
 
+  const deletePhoto = async (photoId: string) => {
+    if (!confirm("Remove this photo?")) return;
+    await api.delete(`/order-items/${item.id}/photos/${photoId}`);
+    onRefresh();
+  };
+
   const savePrice = async () => {
     const price = parseFloat(priceInput) || 0;
     await api.patch(`/order-items/${item.id}`, { unit_price: price });
@@ -226,10 +232,27 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
         <div className="flex items-start justify-between px-4 pt-4 pb-3 border-b border-gray-50">
           <div>
             <h3 className="font-semibold text-gray-900 text-base">{item.garment_type}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {[item.color, item.brand].filter(Boolean).join(" · ") || "No color / brand specified"}
-              {item.note && ` · ${item.note}`}
-            </p>
+            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+              {item.service_type && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                  item.service_type === 'dry_clean' ? 'bg-blue-50 text-blue-600' :
+                  item.service_type === 'water_wash' ? 'bg-cyan-50 text-cyan-600' :
+                  item.service_type === 'luxury_care' ? 'bg-purple-50 text-purple-600' :
+                  'bg-orange-50 text-orange-600'
+                }`}>
+                  {item.service_type === 'dry_clean' ? '🧴 Dry Clean' :
+                   item.service_type === 'water_wash' ? '💧 Water Wash' :
+                   item.service_type === 'luxury_care' ? '✨ Luxury Care' : '🪡 Repair'}
+                </span>
+              )}
+              {item.has_lining && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-50 text-amber-600">🪡 Lined</span>
+              )}
+              <span className="text-xs text-gray-400">
+                {[item.color, item.brand].filter(Boolean).join(' · ') || 'No color / brand'}
+                {item.note && ` · ${item.note}`}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {editingPrice ? (
@@ -292,13 +315,20 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
 
           <div className="flex gap-2 overflow-x-auto pb-1">
             {item.photos.map((p) => (
-              <div key={p.id} className="shrink-0 relative">
+              <div key={p.id} className="shrink-0 relative group">
                 <button onClick={() => setLightbox(`${API_HOST}${p.file_path}`)}>
                   <img src={`${API_HOST}${p.file_path}`} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition" />
                 </button>
                 {p.photo_label && (
                   <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-black/50 text-white px-1 rounded">{p.photo_label}</span>
                 )}
+                <button
+                  onClick={() => deletePhoto(p.id)}
+                  title="Remove photo"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold items-center justify-center shadow hidden group-hover:flex hover:bg-red-600 transition"
+                >
+                  ✕
+                </button>
               </div>
             ))}
             {item.photos.length === 0 && (
@@ -421,6 +451,9 @@ export default function OrderDetailPage() {
   const [garmentBrand, setGarmentBrand] = useState("");
   const [garmentNote, setGarmentNote] = useState("");
   const [garmentPrice, setGarmentPrice] = useState("0");
+  const [garmentServiceType, setGarmentServiceType] = useState("dry_clean");
+  const [garmentFabricType, setGarmentFabricType] = useState("");
+  const [garmentHasLining, setGarmentHasLining] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [showAddGarment, setShowAddGarment] = useState(false);
@@ -451,12 +484,18 @@ export default function OrderDetailPage() {
       brand: garmentBrand || null,
       note: garmentNote || null,
       unit_price: parseFloat(garmentPrice) || 0,
+      service_type: garmentServiceType,
+      fabric_type: garmentFabricType || null,
+      has_lining: garmentHasLining,
     });
     setGarmentType("");
     setGarmentColor("");
     setGarmentBrand("");
     setGarmentNote("");
     setGarmentPrice("0");
+    setGarmentServiceType("dry_clean");
+    setGarmentFabricType("");
+    setGarmentHasLining(false);
     setShowAddGarment(false);
     load();
   };
@@ -609,6 +648,39 @@ export default function OrderDetailPage() {
             📝 {order.note}
           </div>
         )}
+        {/* Pickup type & payment info */}
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <span className={`px-2.5 py-1 rounded-full border font-medium ${
+            order.pickup_type === "home_pickup"
+              ? "bg-blue-50 text-blue-700 border-blue-200"
+              : "bg-gray-50 text-gray-600 border-gray-200"
+          }`}>
+            {order.pickup_type === "home_pickup" ? "🚗 Home Pickup" : "🏪 In-Store"}
+          </span>
+          {order.payment_method && (
+            <span className="px-2.5 py-1 rounded-full border font-medium bg-green-50 text-green-700 border-green-200">
+              💳 {order.payment_method === "cash" ? "Cash 现金" :
+                  order.payment_method === "card" ? "Card 刷卡" :
+                  order.payment_method === "wechat" ? "WeChat 微信" :
+                  order.payment_method === "alipay" ? "Alipay 支付宝" : order.payment_method}
+            </span>
+          )}
+          <span className={`px-2.5 py-1 rounded-full border font-medium ${
+            order.payment_status === "paid"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : order.payment_status === "partial"
+              ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+              : "bg-red-50 text-red-600 border-red-200"
+          }`}>
+            {order.payment_status === "paid" ? "✓ Paid" :
+             order.payment_status === "partial" ? "⚡ Partial" : "⏳ Unpaid"}
+          </span>
+          {(order.discount_amount ?? 0) > 0 && (
+            <span className="px-2.5 py-1 rounded-full border font-medium bg-purple-50 text-purple-700 border-purple-200">
+              🎁 Discount -${order.discount_amount?.toFixed(2)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Garments */}
@@ -660,6 +732,59 @@ export default function OrderDetailPage() {
               value={garmentNote}
               onChange={(e) => setGarmentNote(e.target.value)}
             />
+            {/* Service Type */}
+            <div>
+              <label className="text-xs text-gray-500 font-medium mb-1.5 block">Service Type</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { value: "dry_clean", label: "🧴 Dry Clean" },
+                  { value: "water_wash", label: "💧 Water Wash" },
+                  { value: "luxury_care", label: "✨ Luxury Care" },
+                  { value: "repair", label: "🪡 Repair" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setGarmentServiceType(opt.value)}
+                    className={`py-1.5 rounded-lg text-xs font-medium border transition ${
+                      garmentServiceType === opt.value
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Fabric Type */}
+            <select
+              value={garmentFabricType}
+              onChange={(e) => setGarmentFabricType(e.target.value)}
+              className="w-full border rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-700"
+            >
+              <option value="">Fabric type (optional)</option>
+              <option value="cotton">Cotton 棉</option>
+              <option value="silk">Silk 丝绸</option>
+              <option value="wool">Wool 羊毛</option>
+              <option value="leather">Leather 皮革</option>
+              <option value="down">Down 羽绒</option>
+              <option value="synthetic">Synthetic 化纤</option>
+              <option value="other">Other</option>
+            </select>
+
+            {/* Lining */}
+            <label className="flex items-center gap-2 select-none cursor-pointer">
+              <input
+                type="checkbox"
+                checked={garmentHasLining}
+                onChange={(e) => setGarmentHasLining(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700">Has lining 有衬里</span>
+              <span className="text-xs text-gray-400">(coats, jackets, skirts)</span>
+            </label>
+
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-500 font-medium shrink-0">Price ($)</label>
               <input

@@ -12,6 +12,8 @@ export default function NewOrderPage() {
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [note, setNote] = useState("");
+  const [pickupType, setPickupType] = useState("in_store");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -29,7 +31,12 @@ export default function NewOrderPage() {
     if (!selected) return;
     setLoading(true);
     try {
-      const { data } = await api.post("/orders", { customer_id: selected.id, note: note || null });
+      const { data } = await api.post("/orders", {
+        customer_id: selected.id,
+        note: note || null,
+        pickup_type: pickupType,
+        payment_method: paymentMethod || null,
+      });
       nav(`/orders/${data.id}`);
     } catch (e) {
       console.error(e);
@@ -111,6 +118,56 @@ export default function NewOrderPage() {
           onChange={(e) => setNote(e.target.value)}
           placeholder="Special instructions or notes..."
         />
+      </div>
+
+      {/* Pickup Type */}
+      <div className="bg-white border rounded-xl p-4 mb-4">
+        <h2 className="font-semibold text-gray-700 mb-3">Pickup / Delivery</h2>
+        <div className="flex gap-2">
+          {[
+            { value: "in_store", label: "🏪 In-Store Dropoff" },
+            { value: "home_pickup", label: "🚗 Home Pickup" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPickupType(opt.value)}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition ${
+                pickupType === opt.value
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Payment Method */}
+      <div className="bg-white border rounded-xl p-4 mb-4">
+        <h2 className="font-semibold text-gray-700 mb-3">Payment Method</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { value: "", label: "— Select —" },
+            { value: "cash", label: "💵 Cash" },
+            { value: "card", label: "💳 Card" },
+            { value: "wechat", label: "🟢 WeChat" },
+            { value: "alipay", label: "🔵 Alipay" },
+            { value: "other", label: "Other" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPaymentMethod(opt.value)}
+              className={`py-1.5 rounded-lg text-xs font-medium border transition ${
+                paymentMethod === opt.value
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <button

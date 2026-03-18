@@ -23,6 +23,9 @@ router = APIRouter()
 class OrderCreate(BaseModel):
     customer_id: str
     note: str | None = None
+    pickup_type: str = "in_store"
+    payment_method: str | None = None
+    discount_amount: float = 0.0
 
 
 @router.get("")
@@ -55,7 +58,13 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), _user: App
     customer = db.query(Customer).filter(Customer.id == payload.customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
-    order = LaundryOrder(customer_id=payload.customer_id, note=payload.note)
+    order = LaundryOrder(
+        customer_id=payload.customer_id,
+        note=payload.note,
+        pickup_type=payload.pickup_type,
+        payment_method=payload.payment_method,
+        discount_amount=payload.discount_amount,
+    )
     db.add(order)
     db.commit()
     db.refresh(order)
@@ -102,6 +111,42 @@ def generate_confirmation(order_id: str, db: Session = Depends(get_db), _user: A
 
 class StatusUpdate(BaseModel):
     status: str
+
+
+class OrderUpdate(BaseModel):
+    note: str | None = None
+    pickup_type: str | None = None
+    payment_method: str | None = None
+    payment_status: str | None = None
+    discount_amount: float | None = None
+
+
+@router.patch("/{order_id}")
+def update_order(
+    order_id: str,
+    payload: OrderUpdate,
+    db: Session = Depends(get_db),
+    _user: AppUser = Depends(get_current_user),
+):
+    order = db.query(LaundryOrder).filter(LaundryOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if payload.note is not None:
+        order.note = payload.note
+    if payload.pickup_type is not None:
+        order.pickup_type = payload.pickup_type
+    if payload.payment_method is not None:
+        order.payment_method = payload.payment_method
+    if payload.payment_status is not None:
+        valid_payment_statuses = ["unpaid", "partial", "paid"]
+        if payload.payment_status not in valid_payment_statuses:
+            raise HTTPException(status_code=400, detail=f"Invalid payment_status. Valid: {valid_payment_statuses}")
+        order.payment_status = payload.payment_status
+    if payload.discount_amount is not None:
+        order.discount_amount = payload.discount_amount
+    db.commit()
+    db.refresh(order)
+    return order.to_dict(include_details=True)
 
 
 @router.patch("/{order_id}/status")

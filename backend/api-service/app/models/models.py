@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -92,6 +92,12 @@ class LaundryOrder(Base):
     customer_id = Column(String, ForeignKey("customers.id"), nullable=False)
     status = Column(String, default=OrderStatus.CREATED)
     note = Column(Text)
+    # Pickup & delivery
+    pickup_type = Column(String, default="in_store")  # "in_store" | "home_pickup"
+    # Payment
+    payment_method = Column(String)   # "cash" | "card" | "wechat" | "alipay" | "other"
+    payment_status = Column(String, default="unpaid")  # "unpaid" | "partial" | "paid"
+    discount_amount = Column(Float, default=0.0)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, default=_now, onupdate=_now)
 
@@ -105,13 +111,19 @@ class LaundryOrder(Base):
             "customer_id": self.customer_id,
             "status": self.status,
             "note": self.note,
+            "pickup_type": self.pickup_type or "in_store",
+            "payment_method": self.payment_method,
+            "payment_status": self.payment_status or "unpaid",
+            "discount_amount": self.discount_amount or 0.0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
         if include_details:
             d["customer"] = self.customer.to_dict() if self.customer else None
             d["items"] = [item.to_dict() for item in self.items]
-            d["total_price"] = round(sum((item.unit_price or 0.0) for item in self.items), 2)
+            subtotal = round(sum((item.unit_price or 0.0) for item in self.items), 2)
+            d["subtotal"] = subtotal
+            d["total_price"] = round(subtotal - (self.discount_amount or 0.0), 2)
             confs = sorted(self.confirmations, key=lambda c: c.created_at, reverse=True) if self.confirmations else []
             d["confirmation"] = confs[0].to_dict() if confs else None
         return d
@@ -126,6 +138,10 @@ class LaundryOrderItem(Base):
     brand = Column(String)
     note = Column(Text)
     unit_price = Column(Float, default=0.0)
+    # Garment details
+    service_type = Column(String, default="dry_clean")  # "dry_clean"|"water_wash"|"luxury_care"|"repair"
+    fabric_type = Column(String)   # "cotton"|"silk"|"wool"|"leather"|"down"|"synthetic"|"other"
+    has_lining = Column(Boolean, default=False)
     created_at = Column(DateTime, default=_now)
 
     order = relationship("LaundryOrder", back_populates="items")
@@ -141,6 +157,9 @@ class LaundryOrderItem(Base):
             "brand": self.brand,
             "note": self.note,
             "unit_price": self.unit_price or 0.0,
+            "service_type": self.service_type or "dry_clean",
+            "fabric_type": self.fabric_type,
+            "has_lining": bool(self.has_lining),
             "photos": [p.to_dict() for p in self.photos],
             "inspection": self.inspection.to_dict() if self.inspection else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,

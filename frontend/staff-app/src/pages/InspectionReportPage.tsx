@@ -88,10 +88,30 @@ export default function InspectionReportPage() {
                   <h3 className="font-semibold text-gray-900">
                     {idx + 1}. {item.garment_type}
                   </h3>
-                  <p className="text-xs text-gray-400">
-                    {[item.color, item.brand].filter(Boolean).join(" · ")}
-                    {item.note && ` · ${item.note}`}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                    {item.service_type && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        item.service_type === 'dry_clean' ? 'bg-blue-50 text-blue-600' :
+                        item.service_type === 'water_wash' ? 'bg-cyan-50 text-cyan-600' :
+                        item.service_type === 'luxury_care' ? 'bg-purple-50 text-purple-600' :
+                        'bg-orange-50 text-orange-600'
+                      }`}>
+                        {item.service_type === 'dry_clean' ? 'Dry Clean' :
+                         item.service_type === 'water_wash' ? 'Water Wash' :
+                         item.service_type === 'luxury_care' ? 'Luxury Care' : 'Repair'}
+                      </span>
+                    )}
+                    {item.has_lining && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-50 text-amber-600">Lined 有衬里</span>
+                    )}
+                    {item.fabric_type && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-500 capitalize">{item.fabric_type}</span>
+                    )}
+                    <span className="text-xs text-gray-400">
+                      {[item.color, item.brand].filter(Boolean).join(' · ')}
+                      {item.note && ` · ${item.note}`}
+                    </span>
+                  </div>
                 </div>
                 <span className="text-sm font-medium text-gray-700">${(item.unit_price ?? 0).toFixed(2)}</span>
               </div>

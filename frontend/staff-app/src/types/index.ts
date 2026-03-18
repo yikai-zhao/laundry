@@ -67,6 +67,9 @@ export interface OrderItem {
   brand: string | null;
   note: string | null;
   unit_price: number;
+  service_type: string;
+  fabric_type: string | null;
+  has_lining: boolean;
   photos: Photo[];
   inspection: Inspection | null;
   created_at: string;
@@ -88,6 +91,11 @@ export interface Order {
   customer_id: string;
   status: string;
   note: string | null;
+  pickup_type: string;
+  payment_method: string | null;
+  payment_status: string;
+  discount_amount: number;
+  subtotal: number;
   total_price: number;
   created_at: string;
   updated_at: string | null;

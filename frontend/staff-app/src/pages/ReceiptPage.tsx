@@ -44,7 +44,9 @@ export default function ReceiptPage() {
   if (!order) return <div className="text-center py-12 text-red-500">Order not found</div>;
 
   const totalIssues = order.items.reduce((sum, item) => sum + (item.inspection?.issues?.length ?? 0), 0);
-  const total = order.items.reduce((sum, item) => sum + (item.unit_price ?? 0), 0);
+  const subtotal = order.items.reduce((sum, item) => sum + (item.unit_price ?? 0), 0);
+  const discount = order.discount_amount ?? 0;
+  const total = subtotal - discount;
 
   return (
     <>
@@ -76,7 +78,7 @@ export default function ReceiptPage() {
         </div>
 
         {/* Order status */}
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</span>
           <span className={`text-xs px-3 py-1.5 rounded-full font-semibold ${
             order.status === "cancelled" ? "bg-red-100 text-red-600" :
@@ -86,6 +88,38 @@ export default function ReceiptPage() {
           }`}>
             {STATUS_LABEL[order.status] || order.status}
           </span>
+          <span className={`text-xs px-3 py-1.5 rounded-full font-semibold border ${
+            order.pickup_type === "home_pickup"
+              ? "bg-blue-50 text-blue-700 border-blue-200"
+              : "bg-gray-50 text-gray-600 border-gray-200"
+          }`}>
+            {order.pickup_type === "home_pickup" ? "🚗 Home Pickup" : "🏪 In-Store"}
+          </span>
+        </div>
+
+        {/* Payment info */}
+        <div className="mb-6 grid grid-cols-2 gap-4 text-sm">
+          {order.payment_method && (
+            <div>
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">Payment Method</span>
+              <span className="font-medium text-gray-800">
+                {order.payment_method === "cash" ? "💵 Cash 现金" :
+                 order.payment_method === "card" ? "💳 Card 刷卡" :
+                 order.payment_method === "wechat" ? "🟢 WeChat 微信" :
+                 order.payment_method === "alipay" ? "🔵 Alipay 支付宝" : order.payment_method}
+              </span>
+            </div>
+          )}
+          <div>
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">Payment Status</span>
+            <span className={`font-semibold ${
+              order.payment_status === "paid" ? "text-emerald-600" :
+              order.payment_status === "partial" ? "text-yellow-600" : "text-red-500"
+            }`}>
+              {order.payment_status === "paid" ? "✓ Paid" :
+               order.payment_status === "partial" ? "⚡ Partial" : "⏳ Unpaid"}
+            </span>
+          </div>
         </div>
 
         {/* Garment list */}
@@ -98,7 +132,7 @@ export default function ReceiptPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Item</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Details</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Service</th>
                   <th className="text-right px-4 py-2.5 font-semibold text-gray-600">Issues</th>
                   <th className="text-right px-4 py-2.5 font-semibold text-gray-600">Price</th>
                 </tr>
@@ -106,10 +140,28 @@ export default function ReceiptPage() {
               <tbody className="divide-y divide-gray-100">
                 {order.items.map((item, idx) => (
                   <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
-                    <td className="px-4 py-3 font-medium text-gray-900 align-top">{item.garment_type}</td>
-                    <td className="px-4 py-3 text-gray-500 align-top">
-                      {[item.color, item.brand].filter(Boolean).join(", ") || "—"}
+                    <td className="px-4 py-3 align-top">
+                      <div className="font-medium text-gray-900">{item.garment_type}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {[item.color, item.brand].filter(Boolean).join(", ") || ""}
+                        {item.has_lining && " · Lined"}
+                      </div>
                       {item.note && <div className="text-xs text-gray-400 mt-0.5">{item.note}</div>}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                        item.service_type === 'dry_clean' ? 'bg-blue-50 text-blue-600' :
+                        item.service_type === 'water_wash' ? 'bg-cyan-50 text-cyan-600' :
+                        item.service_type === 'luxury_care' ? 'bg-purple-50 text-purple-600' :
+                        'bg-orange-50 text-orange-600'
+                      }`}>
+                        {item.service_type === 'dry_clean' ? 'Dry Clean' :
+                         item.service_type === 'water_wash' ? 'Water Wash' :
+                         item.service_type === 'luxury_care' ? 'Luxury Care' : 'Repair'}
+                      </span>
+                      {item.fabric_type && (
+                        <div className="text-xs text-gray-400 mt-0.5 capitalize">{item.fabric_type}</div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center align-top">
                       {item.inspection?.issues && item.inspection.issues.length > 0 ? (
@@ -127,6 +179,18 @@ export default function ReceiptPage() {
                 ))}
               </tbody>
               <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                {discount > 0 && (
+                  <>
+                    <tr>
+                      <td colSpan={3} className="px-4 py-2 text-gray-500 text-right">Subtotal</td>
+                      <td className="px-4 py-2 text-gray-700 text-right">${subtotal.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={3} className="px-4 py-2 text-purple-600 text-right">🎁 Discount</td>
+                      <td className="px-4 py-2 text-purple-600 text-right">-${discount.toFixed(2)}</td>
+                    </tr>
+                  </>
+                )}
                 <tr>
                   <td colSpan={3} className="px-4 py-3 font-bold text-gray-700 text-right">Total</td>
                   <td className="px-4 py-3 font-bold text-gray-900 text-right text-base">${total.toFixed(2)}</td>
