@@ -229,6 +229,12 @@ class IssueCreate(BaseModel):
     issue_type: str
     severity_level: int = 1
     position_desc: str = ""
+    bbox_x: float | None = None
+    bbox_y: float | None = None
+    bbox_w: float | None = None
+    bbox_h: float | None = None
+    confidence_score: float | None = None
+    source: str = "manual"
 
 
 @router.post("/inspections/{inspection_id}/issues")
@@ -241,12 +247,18 @@ def add_manual_issue(
     insp = db.query(InspectionRecord).filter(InspectionRecord.id == inspection_id).first()
     if not insp:
         raise HTTPException(status_code=404, detail="Inspection not found")
+    src = payload.source if payload.source in ("ai", "manual") else "manual"
     issue = InspectionIssue(
         inspection_id=inspection_id,
         issue_type=payload.issue_type,
         severity_level=payload.severity_level,
         position_desc=payload.position_desc,
-        source="manual",
+        bbox_x=payload.bbox_x,
+        bbox_y=payload.bbox_y,
+        bbox_w=payload.bbox_w,
+        bbox_h=payload.bbox_h,
+        confidence_score=payload.confidence_score,
+        source=src,
     )
     db.add(issue)
     db.commit()

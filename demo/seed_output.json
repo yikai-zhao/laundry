@@ -1,0 +1,51 @@
+{
+  "orders": [
+    {
+      "id": "15fb4e40-d89c-498f-b781-36498584b525",
+      "customer": "Sarah Johnson",
+      "status": "awaiting_confirmation"
+    },
+    {
+      "id": "58e9ffaa-4986-4f08-b9d0-a948609a7361",
+      "customer": "Michael Lee",
+      "status": "ready_for_pickup"
+    },
+    {
+      "id": "f136b70d-08dd-496a-8df1-33af73b23d3a",
+      "customer": "Jennifer Wong",
+      "status": "awaiting_confirmation"
+    },
+    {
+      "id": "7ce74e6f-3d4c-476a-a3fb-7c23d6a3f52b",
+      "customer": "Robert Kim",
+      "status": "picked_up"
+    },
+    {
+      "id": "a1c26399-68c8-4589-ab46-931c4d16d3c3",
+      "customer": "Lisa Zhang",
+      "status": "created"
+    }
+  ],
+  "confirmations": {
+    "sarah": "oMKKhkvFFb_anu88gjJmrSdXAw1xgRF38fySqnS5sec",
+    "jennifer": "powMkTRe-QUkR3-RUGBuzw6aLW49xKkaNNqwD5Q6LCg"
+  },
+  "garments": [
+    {
+      "id": "0d10738d-8eee-4de5-831f-9c3150e21f7b",
+      "type": "shirt"
+    },
+    {
+      "id": "87353da0-615e-499f-8a12-0ece57df9816",
+      "type": "suit_jacket"
+    },
+    {
+      "id": "f9c1db6a-f68e-4754-b69b-c2c95b7e7c3a",
+      "type": "coat"
+    },
+    {
+      "id": "f47a1474-d391-46d9-8f8c-0223ad3c4819",
+      "type": "dress"
+    }
+  ]
+}

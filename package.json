@@ -1,0 +1,27 @@
+{
+  "name": "laundry",
+  "version": "1.0.0",
+  "description": "**干洗店 AI 验衣系统** — B2B Web-first 生产级系统",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yikai-zhao/laundry.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/yikai-zhao/laundry/issues"
+  },
+  "homepage": "https://github.com/yikai-zhao/laundry#readme",
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}

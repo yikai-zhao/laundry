@@ -17,7 +17,12 @@ api.interceptors.request.use((config) => {
 });
 
 export function getCustomerSignBaseUrl(): string {
-  if (import.meta.env.VITE_CUSTOMER_SIGN_BASE_URL) return import.meta.env.VITE_CUSTOMER_SIGN_BASE_URL;
+  const configured = import.meta.env.VITE_CUSTOMER_SIGN_BASE_URL;
+  if (configured) {
+    // Relative path → prepend current origin for absolute QR URLs
+    if (configured.startsWith("/")) return window.location.origin + configured;
+    return configured;
+  }
   const h = window.location.hostname;
   if (h.includes(".app.github.dev") || h.includes(".preview.app.github.dev"))
     return window.location.origin.replace(/-\d+\./, "-3003.");
