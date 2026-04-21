@@ -25,6 +25,14 @@ storage/signatures/*
 .env.local
 .env.production
 
+# Terraform
+*.tfvars
+!*.tfvars.example
+.terraform/
+*.tfstate
+*.tfstate.backup
+tfplan
+
 # IDE
 .vscode/
 .idea/

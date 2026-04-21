@@ -45,6 +45,7 @@ export interface Issue {
   bbox_y: number | null;
   bbox_w: number | null;
   bbox_h: number | null;
+    photo_index: number | null;
   created_at: string;
   updated_at: string | null;
 }

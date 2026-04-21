@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, relationship
 
+from app.core.storage import get_public_file_url
+
 
 def _uuid() -> str:
     return str(uuid.uuid4())
@@ -182,10 +184,10 @@ class GarmentPhoto(Base):
         return {
             "id": self.id,
             "order_item_id": self.order_item_id,
-            "file_path": self.file_path,
+            "file_path": get_public_file_url(self.file_path),
             "original_filename": self.original_filename,
             "photo_label": self.photo_label,
-            "annotated_file_path": self.annotated_file_path,
+            "annotated_file_path": get_public_file_url(self.annotated_file_path),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -229,6 +231,7 @@ class InspectionIssue(Base):
     bbox_h = Column(Float)
     confidence_score = Column(Float)
     source = Column(String, default="manual")
+    photo_index = Column(Integer)  # 1-based index of which photo this issue is from
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, default=_now, onupdate=_now)
 
@@ -247,6 +250,7 @@ class InspectionIssue(Base):
             "bbox_h": self.bbox_h,
             "confidence_score": self.confidence_score,
             "source": self.source,
+                        "photo_index": self.photo_index,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

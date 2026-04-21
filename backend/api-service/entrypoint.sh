@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+echo "==> Creating storage directories..."
+mkdir -p storage/photos storage/signatures storage/annotated
+
 echo "==> Creating database tables..."
 python -c "
 from app.db.database import engine

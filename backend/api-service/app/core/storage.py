@@ -29,6 +29,23 @@ def _get_s3():
     return _s3_client
 
 
+def get_public_file_url(file_path: str | None) -> str | None:
+    """Convert a stored file path into a browser-accessible URL."""
+    if not file_path:
+        return file_path
+
+    if file_path.startswith(("http://", "https://", "data:", "blob:")):
+        return file_path
+
+    if settings.AWS_S3_BUCKET and file_path.startswith("/storage/"):
+        storage_key = file_path.removeprefix("/storage/")
+        if settings.AWS_CLOUDFRONT_URL:
+            return f"{settings.AWS_CLOUDFRONT_URL.rstrip('/')}/{storage_key}"
+        return f"https://{settings.AWS_S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/{storage_key}"
+
+    return file_path
+
+
 def save_photo(content: bytes, ext: str) -> tuple[str, str]:
     """
     Save photo content. Returns (file_path_for_db, public_url_for_client).
@@ -47,11 +64,7 @@ def save_photo(content: bytes, ext: str) -> tuple[str, str]:
             Body=content,
             ContentType=_mime_for_ext(ext),
         )
-        # If CloudFront domain configured, serve via CDN; otherwise direct S3 URL
-        if settings.AWS_CLOUDFRONT_URL:
-            public_url = f"{settings.AWS_CLOUDFRONT_URL.rstrip('/')}/{s3_key}"
-        else:
-            public_url = f"https://{settings.AWS_S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/{s3_key}"
+        public_url = get_public_file_url(rel_path) or rel_path
         return rel_path, public_url
     else:
         # Local filesystem fallback

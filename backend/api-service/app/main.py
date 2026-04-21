@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,6 +61,8 @@ def create_app() -> FastAPI:
         except Exception as e:
             return {"status": "degraded", "database": str(e)}
 
+    storage_dir = Path("storage")
+    storage_dir.mkdir(parents=True, exist_ok=True)
     application.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
     return application

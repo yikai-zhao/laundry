@@ -1,0 +1,9 @@
+aws_region    = "us-east-1"
+domain_name   = "dryclean.synmodel.com"
+app_name      = "dryclean"
+environment   = "production"
+
+# Sensitive values — set via environment variables or terraform.tfvars (gitignored)
+# db_password   = "CHANGE_ME_STRONG_PASSWORD"
+# openai_api_key = "sk-..."
+# jwt_secret    = "CHANGE_ME_32_CHAR_RANDOM_STRING"

@@ -129,27 +129,60 @@ export default function InspectionReportPage() {
 
               {/* Photos with annotation overlay */}
               {item.photos.length > 0 && (
-                <div className="flex gap-2 flex-wrap mb-3">
-                  {item.photos.map((p) => (
-                    <AnnotatedPhoto
-                      key={p.id}
-                      src={resolveAssetUrl(p.file_path)}
-                      issues={issues}
-                      className="w-32 h-32 rounded-lg border overflow-hidden"
-                    />
-                  ))}
+                <div className="mb-4">
+                  <div className="text-xs font-semibold text-gray-600 mb-2 uppercase">Photos & Issues</div>
+                  <div className="grid gap-4">
+                    {item.photos.map((photo, photoIdx) => {
+                      const photoIssues = issues.filter(i => i.photo_index === photoIdx + 1 || !i.photo_index);
+                      return (
+                        <div key={photo.id} className="border rounded-lg p-3 bg-gray-50">
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0">
+                              <AnnotatedPhoto
+                                src={resolveAssetUrl(photo.file_path)}
+                                issues={photoIssues}
+                                className="w-24 h-24 rounded-lg border overflow-hidden"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-gray-500 mb-1">
+                                <span className="font-medium">Photo {photoIdx + 1}</span>
+                                {photo.photo_label && <span> · {photo.photo_label}</span>}
+                              </div>
+                              {photoIssues.length > 0 ? (
+                                <div className="space-y-1">
+                                  {photoIssues.map((iss) => (
+                                    <div key={iss.id} className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${SEV_COLOR[iss.severity_level] || 'bg-gray-100'}`}>
+                                      <span className="font-medium">{ISSUE_LABEL[iss.issue_type] || iss.issue_type}</span>
+                                      <span>·</span>
+                                      <span>{SEV_LABEL[iss.severity_level]}</span>
+                                      {iss.source === "ai" && <span className="text-[10px] ml-auto">[AI]</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-green-600">✓ No issues detected</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Issues table */}
               {issues.length > 0 ? (
-                <div className="border rounded-lg overflow-hidden text-sm">
+                <div className="border rounded-lg overflow-hidden text-sm mt-4 print:hidden">
+                  <div className="bg-gray-50 px-3 py-2 font-semibold text-gray-700 text-xs uppercase">Detailed Issues Summary</div>
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="text-left px-3 py-2 font-medium text-gray-600">Type</th>
                         <th className="text-left px-3 py-2 font-medium text-gray-600">Severity</th>
                         <th className="text-left px-3 py-2 font-medium text-gray-600">Position</th>
+                                                <th className="text-left px-3 py-2 font-medium text-gray-600">Photo</th>
                         <th className="text-left px-3 py-2 font-medium text-gray-600">Source</th>
                       </tr>
                     </thead>
@@ -163,6 +196,7 @@ export default function InspectionReportPage() {
                             </span>
                           </td>
                           <td className="px-3 py-2 text-gray-600">{iss.position_desc || "—"}</td>
+                                                    <td className="px-3 py-2 text-xs text-gray-500">{iss.photo_index ? `Photo ${iss.photo_index}` : "—"}</td>
                           <td className="px-3 py-2">
                             <span className={`text-xs px-1.5 py-0.5 rounded ${iss.source === "ai" ? "bg-violet-100 text-violet-700" : "bg-sky-100 text-sky-700"}`}>
                               {iss.source === "ai" ? "AI" : "Manual"}

@@ -9,11 +9,11 @@
 ```
 用户浏览器
     │
-    ├─ staff.yourdomain.com  ──→  CloudFront → S3 (staff-app 静态文件)
-    ├─ sign.yourdomain.com   ──→  CloudFront → S3 (customer-sign 静态文件)
-    ├─ admin.yourdomain.com  ──→  CloudFront → S3 (admin-dashboard 静态文件)
+    ├─ staff.dryclean.synmodel.com  ──→  CloudFront → S3 (staff-app 静态文件)
+    ├─ sign.dryclean.synmodel.com   ──→  CloudFront → S3 (customer-sign 静态文件)
+    ├─ admin.dryclean.synmodel.com  ──→  CloudFront → S3 (admin-dashboard 静态文件)
     │
-    └─ api.yourdomain.com    ──→  ALB → ECS Fargate (FastAPI 后端)
+    └─ api.dryclean.synmodel.com    ──→  ALB → ECS Fargate (FastAPI 后端)
                                         │
                                         ├─ RDS PostgreSQL (数据库)
                                         └─ S3 (照片存储) ← CloudFront (照片CDN)
@@ -86,12 +86,12 @@ Terraform 需要一个 S3 桶存储状态文件（不能用 Terraform 自己创�
 # 替换成你的 AWS 账号 ID
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-aws s3 mb s3://laundry-tf-state --region us-east-1
+aws s3 mb s3://dryclean-synmodel-tf-state --region us-east-1
 aws s3api put-bucket-versioning \
-  --bucket laundry-tf-state \
+  --bucket dryclean-synmodel-tf-state \
   --versioning-configuration Status=Enabled
 aws s3api put-bucket-encryption \
-  --bucket laundry-tf-state \
+  --bucket dryclean-synmodel-tf-state \
   --server-side-encryption-configuration \
   '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
 ```
@@ -105,11 +105,12 @@ aws s3api put-bucket-encryption \
 ```bash
 cd /workspaces/laundry/infra/terraform
 cat > terraform.tfvars << 'EOF'
-domain_name    = "mycleaners.com"       # 改成你的域名
+domain_name    = "dryclean.synmodel.com"
 db_password    = "YourStrongPassword123!"  # 自定义，最少 12 位
 openai_api_key = "sk-..."               # OpenAI API Key
 jwt_secret     = "your-jwt-secret-min-32-chars-here"
 aws_region     = "us-east-1"
+app_name       = "dryclean"
 EOF
 ```
 
@@ -164,7 +165,7 @@ terraform output cloudfront_admin_id          # → GitHub Secret: CF_ADMIN_ID
 
 | Variable 名称 | 值 |
 |--------------|-----|
-| `DOMAIN_NAME` | 你的域名，如 `mycleaners.com` |
+| `DOMAIN_NAME` | `dryclean.synmodel.com` |
 
 ---
 
@@ -188,29 +189,40 @@ docker push $ECR_URL:latest
 
 # 强制 ECS 重部署（拉取 latest）
 aws ecs update-service \
-  --cluster laundry \
-  --service laundry-backend \
+  --cluster dryclean \
+  --service dryclean-backend \
   --force-new-deployment \
   --region $AWS_REGION
 ```
 
 ---
 
-## 第七步：域名 NS 配置（使用第三方注册商时）
+## 第七步：域名 NS 配置
 
-如果域名在 **Route53** 购买 → 跳过此步骤，自动生效。
-
-如果在 **Namecheap / GoDaddy** 等购买：
+由于 `dryclean.synmodel.com` 是 `synmodel.com` 的子域名，需要在 synmodel.com 的 DNS 管理中添加 NS 委派记录。
 
 1. 运行 `terraform output route53_nameservers` 得到 4 个 NS 地址
-2. 登录注册商控制台 → 域名管理 → 修改 Nameservers 为"自定义"
-3. 填入这 4 个 NS 地址
-4. DNS 传播通常 10-60 分钟，全球最多 48 小时
+2. 登录 synmodel.com 的 DNS 管理面板（如 Cloudflare / Route53 / Namecheap）
+3. 添加 4 条 NS 记录：
+   - 名称：`dryclean`（子域名前缀）
+   - 类型：`NS`
+   - 值：分别填入 4 个 nameserver 地址
+4. DNS 传播通常 10-60 分钟
 
 验证 NS 已生效：
 ```bash
-dig NS yourdomain.com +short
+dig NS dryclean.synmodel.com +short
 # 应该看到 4 个 awsdns-XX.xxx 地址
+# 注意：因为 dryclean.synmodel.com 是子域名，需要在 synmodel.com 的 DNS 管理里
+# 添加 NS 记录指向 Route53 的 4 个 nameserver
+```
+
+**具体操作步骤（以 Cloudflare 为例）：**
+```
+Type: NS    Name: dryclean    Content: ns-XXX.awsdns-XX.net
+Type: NS    Name: dryclean    Content: ns-XXX.awsdns-XX.co.uk
+Type: NS    Name: dryclean    Content: ns-XXX.awsdns-XX.com
+Type: NS    Name: dryclean    Content: ns-XXX.awsdns-XX.org
 ```
 
 ---
@@ -227,7 +239,7 @@ git push origin main
 GitHub Actions 会自动：
 1. 构建 Docker 镜像 → 推送到 ECR
 2. 更新 ECS 服务（蓝绿部署）
-3. 构建 3 个前端（`VITE_API_BASE_URL=https://api.yourdomain.com`）
+3. 构建 3 个前端（`VITE_API_BASE_URL=https://api.dryclean.synmodel.com`）
 4. 同步到 S3
 5. 清除 CloudFront 缓存
 
@@ -240,17 +252,17 @@ GitHub Actions 会自动：
 
 ```bash
 # 后端健康检查
-curl https://api.yourdomain.com/health
+curl https://api.dryclean.synmodel.com/health
 # 期望: {"status":"ok","database":"connected"}
 
 # 查看后端日志（ECS）
-aws logs tail /ecs/laundry/backend --follow --region us-east-1
+aws logs tail /ecs/dryclean/backend --follow --region us-east-1
 ```
 
 打开浏览器访问：
-- `https://staff.yourdomain.com` — 员工收衣界面
-- `https://sign.yourdomain.com` — 客户签名界面  
-- `https://admin.yourdomain.com` — 管理后台
+- `https://staff.dryclean.synmodel.com` — 员工收衣界面
+- `https://sign.dryclean.synmodel.com` — 客户签名界面  
+- `https://admin.dryclean.synmodel.com` — 管理后台
 
 首次登录账号：
 - admin / admin123（⚠️ 上线后立即改密码！）
@@ -262,14 +274,14 @@ aws logs tail /ecs/laundry/backend --follow --region us-east-1
 
 ### 查看日志
 ```bash
-aws logs tail /ecs/laundry/backend --follow --region us-east-1
+aws logs tail /ecs/dryclean/backend --follow --region us-east-1
 ```
 
 ### 数据库连接（需要先 SSH 到 ECS 任务或建立 bastion）
 ```bash
 # 在本地通过 AWS Session Manager 连接
 aws ecs execute-command \
-  --cluster laundry \
+  --cluster dryclean \
   --task <TASK_ID> \
   --container backend \
   --interactive \
@@ -287,8 +299,8 @@ RDS 已配置 7 天自动备份，每天凌晨 3:00 UTC 创建快照。
 手动快照：
 ```bash
 aws rds create-db-snapshot \
-  --db-instance-identifier laundry-postgres \
-  --db-snapshot-identifier laundry-manual-$(date +%Y%m%d) \
+  --db-instance-identifier dryclean-postgres \
+  --db-snapshot-identifier dryclean-manual-$(date +%Y%m%d) \
   --region us-east-1
 ```
 
@@ -296,8 +308,8 @@ aws rds create-db-snapshot \
 如果并发量增加，调整 ECS 任务数：
 ```bash
 aws ecs update-service \
-  --cluster laundry \
-  --service laundry-backend \
+  --cluster dryclean \
+  --service dryclean-backend \
   --desired-count 2 \
   --region us-east-1
 ```

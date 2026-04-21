@@ -29,7 +29,8 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "AWS_REGION",         value = var.aws_region },
       { name = "AWS_CLOUDFRONT_URL", value = "https://${aws_cloudfront_distribution.photos.domain_name}" },
       { name = "OPENAI_API_KEY",     value = var.openai_api_key },
-      { name = "SECRET_KEY",         value = var.jwt_secret },
+      { name = "JWT_SECRET",         value = var.jwt_secret },
+      { name = "CORS_ORIGINS",       value = "https://staff.${var.domain_name},https://sign.${var.domain_name},https://admin.${var.domain_name}" },
       { name = "ENVIRONMENT",        value = "production" },
     ]
 
@@ -60,9 +61,9 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
+    subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
+    assign_public_ip = true
   }
 
   load_balancer {

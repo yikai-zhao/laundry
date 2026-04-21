@@ -46,9 +46,6 @@ async def upload_photo(
     db.commit()
     db.refresh(photo)
     d = photo.to_dict()
-    # Return public_url so frontend can display from S3/CloudFront in prod
-    if public_url != file_path:
-        d["file_path"] = public_url
     d["quality"] = quality
     return d
 
@@ -56,18 +53,7 @@ async def upload_photo(
 @router.get("/order-items/{item_id}/photos")
 def list_photos(item_id: str, db: Session = Depends(get_db), _user: AppUser = Depends(get_current_user)):
     photos = db.query(GarmentPhoto).filter(GarmentPhoto.order_item_id == item_id).order_by(GarmentPhoto.created_at).all()
-    items = []
-    for p in photos:
-        d = p.to_dict()
-        # If using S3, rewrite /storage/photos/x.jpg to public S3/CF URL
-        if settings.AWS_S3_BUCKET and d.get("file_path", "").startswith("/storage/photos/"):
-            fname = os.path.basename(d["file_path"])
-            if settings.AWS_CLOUDFRONT_URL:
-                d["file_path"] = f"{settings.AWS_CLOUDFRONT_URL.rstrip('/')}/photos/{fname}"
-            else:
-                d["file_path"] = f"https://{settings.AWS_S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/photos/{fname}"
-        items.append(d)
-    return items
+    return [photo.to_dict() for photo in photos]
 
 
 @router.delete("/photos/{photo_id}")

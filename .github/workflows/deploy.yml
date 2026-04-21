@@ -60,7 +60,7 @@ jobs:
         id: build
         env:
           REGISTRY:   ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: laundry/backend
+          REPOSITORY: dryclean/backend
           IMAGE_TAG:  ${{ github.sha }}
         run: |
           docker build \
@@ -93,7 +93,7 @@ jobs:
       - name: Download current task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition laundry-backend \
+            --task-definition dryclean-backend \
             --query taskDefinition \
             > task-def.json
 
@@ -109,8 +109,8 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service:         laundry-backend
-          cluster:         laundry
+          service:         dryclean-backend
+          cluster:         dryclean
           wait-for-service-stability: true
 
   # ─────────────────────────────────────────────
@@ -158,6 +158,8 @@ jobs:
         working-directory: ${{ matrix.dir }}
         env:
           VITE_API_BASE_URL: ${{ format('https://api.{0}', vars.DOMAIN_NAME) }}
+          VITE_BASE_PATH: /
+          VITE_ROUTER_BASE: /
         run: npm run build
 
       - name: Configure AWS credentials

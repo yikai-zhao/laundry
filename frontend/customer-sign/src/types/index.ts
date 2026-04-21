@@ -17,6 +17,7 @@ export interface Issue {
   bbox_y: number | null;
   bbox_w: number | null;
   bbox_h: number | null;
+  photo_index: number | null;
 }
 
 export interface Inspection {

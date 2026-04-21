@@ -1,51 +1,60 @@
 {
   "orders": [
     {
-      "id": "15fb4e40-d89c-498f-b781-36498584b525",
+      "id": "efa936c3-1754-4a25-acb8-b81d733e6324",
       "customer": "Sarah Johnson",
       "status": "awaiting_confirmation"
     },
     {
-      "id": "58e9ffaa-4986-4f08-b9d0-a948609a7361",
+      "id": "419e6323-402b-4bfc-bcc0-602bae3a1813",
       "customer": "Michael Lee",
       "status": "ready_for_pickup"
     },
     {
-      "id": "f136b70d-08dd-496a-8df1-33af73b23d3a",
+      "id": "3611c329-98e0-4169-a661-80b30b1c2ace",
       "customer": "Jennifer Wong",
       "status": "awaiting_confirmation"
     },
     {
-      "id": "7ce74e6f-3d4c-476a-a3fb-7c23d6a3f52b",
+      "id": "9f99e3a4-6675-4e51-9b02-3dfb5894534a",
       "customer": "Robert Kim",
       "status": "picked_up"
     },
     {
-      "id": "a1c26399-68c8-4589-ab46-931c4d16d3c3",
+      "id": "55cba2f4-b60a-4aa7-9ede-895ed916cb08",
       "customer": "Lisa Zhang",
-      "status": "created"
+      "status": "inspection_pending"
     }
   ],
   "confirmations": {
-    "sarah": "oMKKhkvFFb_anu88gjJmrSdXAw1xgRF38fySqnS5sec",
-    "jennifer": "powMkTRe-QUkR3-RUGBuzw6aLW49xKkaNNqwD5Q6LCg"
+    "sarah": "mb9SYsj-kmr2jgKEDTnW1wIx1VA32gzrw0WgtMfc4gE",
+    "jennifer": "ijOPcTApmfRxxKUI8itM-zqq8Hg7kRKAEcdhEpZJF6k"
   },
   "garments": [
     {
-      "id": "0d10738d-8eee-4de5-831f-9c3150e21f7b",
-      "type": "shirt"
+      "id": "281ec150-92da-47e6-b477-d2eb1d5fe63d",
+      "type": "shirt",
+      "order_idx": 0
     },
     {
-      "id": "87353da0-615e-499f-8a12-0ece57df9816",
-      "type": "suit_jacket"
+      "id": "1a209374-7453-4962-94c5-2949eb9edbe7",
+      "type": "suit_jacket",
+      "order_idx": 0
     },
     {
-      "id": "f9c1db6a-f68e-4754-b69b-c2c95b7e7c3a",
-      "type": "coat"
+      "id": "2d7e6cb4-be7c-4424-872d-063ed79145b0",
+      "type": "coat",
+      "order_idx": 1
     },
     {
-      "id": "f47a1474-d391-46d9-8f8c-0223ad3c4819",
-      "type": "dress"
+      "id": "5252eb38-6085-4e09-b00d-530697d3574f",
+      "type": "dress",
+      "order_idx": 2
+    },
+    {
+      "id": "3555b1b3-82ce-4b26-859e-8541821add95",
+      "type": "pants",
+      "order_idx": 3
     }
   ]
 }

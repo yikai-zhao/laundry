@@ -26,6 +26,7 @@ export interface Issue {
   position_desc: string;
   source: string;
   confidence_score: number | null;
+  photo_index: number | null;
 }
 
 export interface Inspection {

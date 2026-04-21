@@ -283,6 +283,7 @@ Important for stain output quality:
                 "bbox_y": bbox_y,
                 "bbox_w": bbox_w,
                 "bbox_h": bbox_h,
+                            "photo_index": iss.get("photo_index"),
             })
     
     # Deduplicate all collected issues
@@ -414,6 +415,7 @@ def trigger_detection(inspection_id: str, db: Session = Depends(get_db), _user: 
             bbox_h=ai_issue.get("bbox_h"),
             confidence_score=ai_issue.get("confidence_score"),
             source="ai",
+                    photo_index=ai_issue.get("photo_index"),
         )
         db.add(issue)
     insp.status = InspectionStatus.COMPLETED

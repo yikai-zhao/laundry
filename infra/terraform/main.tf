@@ -9,7 +9,7 @@ terraform {
 
   # Remote state in S3 (bootstrap this bucket manually once — see DEPLOY_AWS.md)
   backend "s3" {
-    bucket = "laundry-tf-state"   # change to your bucket name
+    bucket = "dryclean-synmodel-tf-state"
     key    = "production/terraform.tfstate"
     region = "us-east-1"
     encrypt = true
