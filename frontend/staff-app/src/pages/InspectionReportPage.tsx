@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { api, API_HOST } from "../services/api";
+import { api, resolveAssetUrl } from "../services/api";
 import type { Order, Issue } from "../types";
 import AnnotatedPhoto from "../components/AnnotatedPhoto";
 
@@ -80,6 +80,7 @@ export default function InspectionReportPage() {
         {order.items.map((item, idx) => {
           const issues: Issue[] = item.inspection?.issues || [];
           const inspector = item.inspection?.inspector;
+          const inspectionStatus = item.inspection?.status;
 
           return (
             <div key={item.id} className="border-b last:border-b-0 px-6 py-4">
@@ -132,7 +133,7 @@ export default function InspectionReportPage() {
                   {item.photos.map((p) => (
                     <AnnotatedPhoto
                       key={p.id}
-                      src={`${API_HOST}${p.file_path}`}
+                      src={resolveAssetUrl(p.file_path)}
                       issues={issues}
                       className="w-32 h-32 rounded-lg border overflow-hidden"
                     />
@@ -172,9 +173,17 @@ export default function InspectionReportPage() {
                     </tbody>
                   </table>
                 </div>
-              ) : (
+              ) : inspectionStatus === "completed" ? (
                 <div className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
                   ✓ No issues detected
+                </div>
+              ) : inspectionStatus === "detecting" ? (
+                <div className="text-sm text-violet-700 bg-violet-50 rounded-lg px-3 py-2 border border-violet-200">
+                  ⏳ AI detection still running, report is not final yet.
+                </div>
+              ) : (
+                <div className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
+                  ⚠ Inspection not completed yet. No-issue result is not available.
                 </div>
               )}
             </div>

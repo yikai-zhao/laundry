@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api, API_HOST } from "../services/api";
+import { api, resolveAssetUrl } from "../services/api";
 import type { ConfirmationData } from "../types";
 import SignatureCanvas from "../components/SignatureCanvas";
 import AnnotatedPhoto from "../components/AnnotatedPhoto";
@@ -101,7 +101,7 @@ export default function ConfirmPage() {
               {item.photos.map((p) => (
                 <AnnotatedPhoto
                   key={p.id}
-                  src={`${API_HOST}${p.file_path}`}
+                  src={resolveAssetUrl(p.file_path)}
                   issues={item.inspection?.issues || []}
                   className="w-24 h-24 rounded-lg border flex-shrink-0 overflow-hidden"
                 />

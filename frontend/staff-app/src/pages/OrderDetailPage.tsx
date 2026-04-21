@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { api, API_HOST, getCustomerSignBaseUrl } from "../services/api";
+import { api, getCustomerSignBaseUrl, resolveAssetUrl } from "../services/api";
 import type { Order, OrderItem, Issue, PhotoQuality } from "../types";
 import AnnotatedPhoto from "../components/AnnotatedPhoto";
+
+function getApiErrorMessage(error: unknown): string {
+  const e = error as {
+    response?: { data?: { detail?: string } };
+    message?: string;
+  };
+  return e?.response?.data?.detail || e?.message || "Upload failed. Please try again.";
+}
 
 const GARMENT_PRESETS = [
   "Suit Jacket", "Dress Pants", "Shirt", "T-Shirt", "Sweater", "Knit Top",
@@ -141,6 +149,8 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
   const [priceInput, setPriceInput] = useState(String(item.unit_price ?? 0));
   const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
   const [aiNotConfigured, setAiNotConfigured] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const deletePhoto = async (photoId: string) => {
     if (!confirm("Remove this photo?")) return;
@@ -157,39 +167,49 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
 
   const uploadPhotos = async (files: FileList, label?: string) => {
     setUploading(true);
+    setUploadError(null);
     setQualityWarnings([]);
-    const allWarnings: string[] = [];
-    for (const file of Array.from(files)) {
-      const form = new FormData();
-      form.append("file", file);
-      if (label) form.append("photo_label", label);
-      const { data } = await api.post(`/order-items/${item.id}/photos`, form);
-      if (data.quality && !data.quality.ok) {
-        allWarnings.push(...data.quality.warnings);
+    try {
+      const allWarnings: string[] = [];
+      for (const file of Array.from(files)) {
+        const form = new FormData();
+        form.append("file", file);
+        if (label) form.append("photo_label", label);
+        const { data } = await api.post(`/order-items/${item.id}/photos`, form);
+        if (data.quality && !data.quality.ok) {
+          allWarnings.push(...data.quality.warnings);
+        }
       }
-    }
-    if (allWarnings.length > 0) {
-      setQualityWarnings(allWarnings);
-    }
-    setUploading(false);
-    if (!item.inspection || item.inspection.issues.length === 0) {
-      await triggerDetect();
-    } else {
-      onRefresh();
+      if (allWarnings.length > 0) {
+        setQualityWarnings(allWarnings);
+      }
+      if (!item.inspection || item.inspection.issues.length === 0) {
+        await triggerDetect();
+      } else {
+        onRefresh();
+      }
+    } catch (e) {
+      console.error(e);
+      setUploadError(getApiErrorMessage(e));
+    } finally {
+      setUploading(false);
     }
   };
 
   const triggerDetect = async () => {
     setDetecting(true);
     setAiNotConfigured(false);
+    setDetectError(null);
     try {
       const { data: insp } = await api.post(`/order-items/${item.id}/inspection`);
       const { data: result } = await api.post(`/inspections/${insp.id}/detect`);
       if (result.ai_not_configured) {
         setAiNotConfigured(true);
+        setDetectError("AI detection is not configured on the server.");
       }
     } catch (e) {
       console.error(e);
+      setDetectError(getApiErrorMessage(e));
     } finally {
       setDetecting(false);
       onRefresh();
@@ -316,8 +336,8 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
           <div className="flex gap-2 overflow-x-auto pb-1">
             {item.photos.map((p) => (
               <div key={p.id} className="shrink-0 relative group">
-                <button onClick={() => setLightbox(`${API_HOST}${p.file_path}`)}>
-                  <img src={`${API_HOST}${p.file_path}`} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition" />
+                <button onClick={() => setLightbox(resolveAssetUrl(p.file_path))}>
+                  <img src={resolveAssetUrl(p.file_path)} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition" />
                 </button>
                 {p.photo_label && (
                   <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-black/50 text-white px-1 rounded">{p.photo_label}</span>
@@ -342,6 +362,12 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
               <p className="font-semibold">⚠ Image Quality Warning:</p>
               {qualityWarnings.map((w, i) => <p key={i}>• {w}</p>)}
               <p className="text-amber-600 font-medium mt-1">Consider re-taking the photo for better AI detection results.</p>
+            </div>
+          )}
+
+          {uploadError && (
+            <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+              ⚠ Upload failed: {uploadError}
             </div>
           )}
 
@@ -378,6 +404,12 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
               ⚠ AI detection is not configured (OPENAI_API_KEY not set). You can still add issues manually below.
             </div>
           )}
+
+          {detectError && (
+            <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+              ⚠ AI detection failed: {detectError}
+            </div>
+          )}
         </div>
 
         {/* Issues */}
@@ -392,10 +424,18 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
           </div>
         )}
 
-        {item.inspection && issues.length === 0 && inspStatus !== "pending" && !detecting && (
+        {item.inspection && issues.length === 0 && inspStatus === "completed" && !detecting && !detectError && !aiNotConfigured && (
           <div className="px-4 pb-3">
             <div className="text-sm text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
               ✓ No issues detected — garment looks good
+            </div>
+          </div>
+        )}
+
+        {item.inspection && issues.length === 0 && inspStatus === "detecting" && !detecting && !detectError && (
+          <div className="px-4 pb-3">
+            <div className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
+              ⚠ Previous AI detection did not complete. Please tap Re-detect to try again.
             </div>
           </div>
         )}

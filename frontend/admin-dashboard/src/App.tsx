@@ -14,8 +14,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const basePath = import.meta.env.VITE_ROUTER_BASE || "/admin";
   return (
-    <BrowserRouter basename="/admin">
+    <BrowserRouter basename={basePath}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

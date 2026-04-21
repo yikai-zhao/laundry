@@ -3,8 +3,9 @@ import ConfirmPage from "./pages/ConfirmPage";
 import SuccessPage from "./pages/SuccessPage";
 
 export default function App() {
+  const basePath = import.meta.env.VITE_ROUTER_BASE || "/sign";
   return (
-    <BrowserRouter basename="/sign">
+    <BrowserRouter basename={basePath}>
       <Routes>
         <Route path="/confirm/:token" element={<ConfirmPage />} />
         <Route path="/success" element={<SuccessPage />} />

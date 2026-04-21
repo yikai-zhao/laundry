@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { api, API_HOST } from "../services/api";
+import { api, resolveAssetUrl } from "../services/api";
 import NavBar from "../components/NavBar";
 import type { Order } from "../types";
 
@@ -58,7 +58,7 @@ export default function OrderDetailPage() {
             {item.photos.length > 0 && (
               <div className="flex gap-2 overflow-x-auto">
                 {item.photos.map((p) => (
-                  <img key={p.id} src={`${API_HOST}${p.file_path}`} alt="" className="w-24 h-24 object-cover rounded-lg border flex-shrink-0" />
+                  <img key={p.id} src={resolveAssetUrl(p.file_path)} alt="" className="w-24 h-24 object-cover rounded-lg border flex-shrink-0" />
                 ))}
               </div>
             )}
