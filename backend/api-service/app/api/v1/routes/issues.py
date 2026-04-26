@@ -52,14 +52,8 @@ def delete_issue(issue_id: str, db: Session = Depends(get_db), user: AppUser = D
     issue = db.query(InspectionIssue).filter(InspectionIssue.id == issue_id).first()
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
-    # Record deletion in history
-    db.add(IssueEditHistory(
-        issue_id=issue_id,
-        field_changed="deleted",
-        old_value=issue.issue_type,
-        new_value=None,
-        changed_by=user.username,
-    ))
+    # Remove history rows first to avoid FK violation on delete.
+    db.query(IssueEditHistory).filter(IssueEditHistory.issue_id == issue_id).delete()
     db.delete(issue)
     db.commit()
     return {"ok": True}

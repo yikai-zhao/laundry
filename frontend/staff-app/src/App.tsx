@@ -7,6 +7,7 @@ import NewOrderPage from "./pages/NewOrderPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
 import ReceiptPage from "./pages/ReceiptPage";
 import InspectionReportPage from "./pages/InspectionReportPage";
+import AdminPage from "./pages/AdminPage";
 import React from "react";
 
 class ErrorBoundary extends React.Component<
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
           <Route path="/orders/:id/receipt" element={<ProtectedRoute><ReceiptPage /></ProtectedRoute>} />
           <Route path="/orders/:id/report" element={<ProtectedRoute><InspectionReportPage /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/orders" replace />} />
         </Routes>
       </BrowserRouter>

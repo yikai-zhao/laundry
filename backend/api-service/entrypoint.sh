@@ -12,8 +12,8 @@ Base.metadata.create_all(bind=engine)
 print('Tables created successfully.')
 "
 
-echo "==> Stamping Alembic to head..."
-alembic stamp head
+echo "==> Running Alembic migrations..."
+alembic upgrade head
 
 echo "==> Starting uvicorn..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000

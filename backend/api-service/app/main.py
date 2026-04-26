@@ -16,7 +16,9 @@ from app.models.models import AppUser, Base, UserRole
 def create_app() -> FastAPI:
     application = FastAPI(title="Laundry AI Inspection System", version="0.1.0")
 
-    origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS != "*" else ["*"]
+    origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    if "*" in origins:
+        origins = ["*"]
     application.add_middleware(
         CORSMiddleware,
         allow_origins=origins,

@@ -5,6 +5,7 @@ export default function Navbar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const nav = useNavigate();
+  const isAdmin = user?.role === "admin";
 
   const handleLogout = () => {
     logout();
@@ -19,6 +20,9 @@ export default function Navbar() {
         <Link to="/orders" className="font-bold text-lg">🧥 Laundry Inspector</Link>
         <Link to="/orders" className="text-sm text-indigo-200 hover:text-white transition">Orders</Link>
         <Link to="/orders/new" className="text-sm text-indigo-200 hover:text-white transition">+ New</Link>
+        {isAdmin && (
+          <Link to="/admin" className="text-sm text-indigo-200 hover:text-white transition">Admin</Link>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <span className="text-sm text-indigo-200">{user.display_name || user.username}</span>

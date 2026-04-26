@@ -49,14 +49,6 @@ services:
     container_name: laundry-customer-sign
     restart: unless-stopped
 
-  admin-dashboard:
-    build:
-      context: ./frontend/admin-dashboard
-      args:
-        VITE_API_BASE_URL: ${API_BASE_URL}
-    container_name: laundry-admin-dashboard
-    restart: unless-stopped
-
   nginx:
     image: nginx:alpine
     container_name: laundry-nginx
@@ -70,7 +62,6 @@ services:
       - backend-api
       - staff-app
       - customer-sign
-      - admin-dashboard
 
 volumes:
   pg_data:

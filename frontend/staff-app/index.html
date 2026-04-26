@@ -2,8 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Staff App</title>
+    <!-- Mobile: cover notch/dynamic island + safe area -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- iOS Web App -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="LaundryAI" />
+    <!-- Android / PWA -->
+    <meta name="theme-color" content="#6366f1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Prevent phone number detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <title>LaundryAI Staff</title>
+    <!-- App icons (place actual icons in /public/icons/) -->
+    <link rel="apple-touch-icon" href="/icons/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
   </head>
   <body>
     <div id="root"></div>

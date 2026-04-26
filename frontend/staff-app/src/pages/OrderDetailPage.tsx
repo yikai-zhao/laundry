@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api, getCustomerSignBaseUrl, resolveAssetUrl } from "../services/api";
+import { capturePhotoNative, pickPhotosNative, isNativePlatform } from "../plugins/camera";
 import type { Order, OrderItem, Issue, PhotoQuality } from "../types";
 import AnnotatedPhoto from "../components/AnnotatedPhoto";
 
@@ -13,10 +14,31 @@ function getApiErrorMessage(error: unknown): string {
 }
 
 const GARMENT_PRESETS = [
-  "Suit Jacket", "Dress Pants", "Shirt", "T-Shirt", "Sweater", "Knit Top",
-  "Overcoat", "Trench Coat", "Down Jacket", "Blazer", "Leather Jacket", "Casual Jacket",
-  "Dress", "Skirt", "Jeans", "Casual Pants", "Sweatpants",
-  "Formal Gown", "Silk Blouse", "Cashmere Sweater", "Linen Shirt", "Other",
+  // Outerwear
+  "Down Jacket", "Down Vest", "Puffer Jacket",
+  "Leather Jacket", "Suede Jacket", "Suede Coat",
+  "Shell Jacket", "Softshell Jacket", "Windbreaker",
+  "Overcoat", "Trench Coat", "Wool Coat", "Pea Coat",
+  "Varsity Jacket", "Baseball Jacket",
+  "Denim Jacket", "Casual Jacket",
+  // Suits & Blazers
+  "Suit Jacket", "Blazer", "Dark Blazer", "Sport Coat",
+  "Dress Pants", "Suit Trousers",
+  // Structured / Special
+  "Tweed Jacket", "Structured Jacket", "Chanel-style Jacket",
+  "Formal Gown", "Wedding Dress", "Evening Gown",
+  // Tops
+  "Dress Shirt", "Shirt", "Polo Shirt", "T-Shirt",
+  "Silk Blouse", "Linen Shirt",
+  "Sweater", "Knit Top", "Cardigan", "Cashmere Sweater",
+  "Hoodie", "Sweatshirt",
+  // Bottoms
+  "Jeans", "Casual Pants", "Skirt", "Sweatpants",
+  // Dresses
+  "Dress", "Maxi Dress", "Casual Dress",
+  // Footwear
+  "Sneakers", "Leather Shoes", "Boots", "Loafers", "High Heels",
+  "Other",
 ];
 
 const ISSUE_TYPES_OPTIONS = [
@@ -123,7 +145,7 @@ function IssueCard({ issue, onDelete, onUpdate }: { issue: Issue; onDelete: () =
           <span className="font-medium text-gray-800">{ISSUE_LABEL[issue.issue_type] || issue.issue_type}</span>
           {issue.position_desc && <span className="text-gray-400 ml-1.5">· {issue.position_desc}</span>}
           {issue.confidence_score != null && (
-            <span className="text-xs text-gray-300 ml-1">({Math.round(issue.confidence_score * 100)}%)</span>
+            <span className="text-xs text-gray-300 ml-1">({(issue.confidence_score * 100).toFixed(1)}%)</span>
           )}
         </div>
       </div>
@@ -144,13 +166,14 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
   const [newType, setNewType] = useState("stain");
   const [newSev, setNewSev] = useState(1);
   const [newPos, setNewPos] = useState("");
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ src: string; photoIndex: number } | null>(null);
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceInput, setPriceInput] = useState(String(item.unit_price ?? 0));
   const [qualityWarnings, setQualityWarnings] = useState<string[]>([]);
   const [aiNotConfigured, setAiNotConfigured] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [detectElapsed, setDetectElapsed] = useState(0);
 
   const deletePhoto = async (photoId: string) => {
     if (!confirm("Remove this photo?")) return;
@@ -198,19 +221,36 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
 
   const triggerDetect = async () => {
     setDetecting(true);
+    setDetectElapsed(0);
     setAiNotConfigured(false);
     setDetectError(null);
+
+    // Elapsed-time ticker
+    const startMs = Date.now();
+    const ticker = setInterval(() => {
+      setDetectElapsed(Math.floor((Date.now() - startMs) / 1000));
+    }, 1000);
+
     try {
       const { data: insp } = await api.post(`/order-items/${item.id}/inspection`);
-      const { data: result } = await api.post(`/inspections/${insp.id}/detect`);
-      if (result.ai_not_configured) {
-        setAiNotConfigured(true);
-        setDetectError("AI detection is not configured on the server.");
+      // Trigger async detection — backend returns immediately with status="detecting"
+      await api.post(`/inspections/${insp.id}/detect`);
+
+      // Poll until status is no longer "detecting" (max 8 min)
+      const inspId: string = insp.id;
+      const deadline = Date.now() + 8 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const { data: polled } = await api.get(`/inspections/${inspId}`);
+        if (polled.status !== "detecting") break;
       }
     } catch (e) {
       console.error(e);
-      setDetectError(getApiErrorMessage(e));
+      const msg = getApiErrorMessage(e);
+      if (msg.includes("OPENAI_API_KEY")) setAiNotConfigured(true);
+      setDetectError(msg);
     } finally {
+      clearInterval(ticker);
       setDetecting(false);
       onRefresh();
     }
@@ -241,7 +281,11 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
       {lightbox && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
           <div className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
-            <AnnotatedPhoto src={lightbox} issues={issues} className="max-w-full max-h-[80vh] rounded-lg" />
+            <AnnotatedPhoto
+              src={lightbox.src}
+              issues={issues.filter((i) => !i.photo_index || i.photo_index === lightbox.photoIndex)}
+              className="max-w-full max-h-[80vh] rounded-lg"
+            />
           </div>
           <button className="absolute top-4 right-4 text-white text-2xl font-light" onClick={() => setLightbox(null)}>✕</button>
         </div>
@@ -334,10 +378,14 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
           )}
 
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {item.photos.map((p) => (
+            {item.photos.map((p, photoIdx) => (
               <div key={p.id} className="shrink-0 relative group">
-                <button onClick={() => setLightbox(resolveAssetUrl(p.file_path))}>
-                  <img src={resolveAssetUrl(p.file_path)} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition" />
+                <button onClick={() => setLightbox({ src: resolveAssetUrl(p.file_path), photoIndex: photoIdx + 1 })}>
+                  <AnnotatedPhoto
+                    src={resolveAssetUrl(p.file_path)}
+                    issues={issues.filter((i) => !i.photo_index || i.photo_index === photoIdx + 1)}
+                    className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition"
+                  />
                 </button>
                 {p.photo_label && (
                   <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-black/50 text-white px-1 rounded">{p.photo_label}</span>
@@ -377,18 +425,65 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
             onChange={(e) => e.target.files && uploadPhotos(e.target.files)} />
 
+          {/* AI detecting progress bar */}
+          {detecting && (
+            <div className="mt-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold text-violet-700">🤖 AI scanning garment…</span>
+                <span className="text-xs text-violet-500 font-mono">{detectElapsed}s</span>
+              </div>
+              <div className="w-full bg-violet-100 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-1.5 bg-violet-500 rounded-full transition-all"
+                  style={{ width: `${Math.min(95, (detectElapsed / 120) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-violet-400 mt-1">Multiple AI passes running (typically 60–120s per photo)</p>
+            </div>
+          )}
+
           <div className="flex gap-2 mt-3 flex-wrap">
-            <button onClick={() => cameraRef.current?.click()} disabled={uploading || detecting}
+            <button
+              onClick={() => {
+                // iOS Safari: file input click MUST be in sync event handler (no awaits)
+                if (isNativePlatform()) {
+                  capturePhotoNative().then((file) => {
+                    if (file) {
+                      const dt = new DataTransfer();
+                      dt.items.add(file);
+                      uploadPhotos(dt.files);
+                    }
+                  });
+                  return;
+                }
+                cameraRef.current?.click();
+              }}
+              disabled={uploading || detecting}
               className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50 shadow-sm">
               <span>📷</span> {uploading ? "Uploading…" : "Camera"}
             </button>
-            <button onClick={() => fileRef.current?.click()} disabled={uploading || detecting}
+            <button
+              onClick={() => {
+                // iOS Safari: file input click MUST be in sync event handler (no awaits)
+                if (isNativePlatform()) {
+                  pickPhotosNative().then((files) => {
+                    if (files) {
+                      const dt = new DataTransfer();
+                      files.forEach((f) => dt.items.add(f));
+                      uploadPhotos(dt.files);
+                    }
+                  });
+                  return;
+                }
+                fileRef.current?.click();
+              }}
+              disabled={uploading || detecting}
               className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
               <span>🖼</span> Gallery
             </button>
             <button onClick={triggerDetect} disabled={detecting || item.photos.length === 0}
               className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-violet-100 transition disabled:opacity-50 ml-auto">
-              <span>🤖</span> {detecting ? "Analyzing…" : "Re-detect"}
+              <span>🤖</span> {detecting ? `Analyzing… ${detectElapsed}s` : "Re-detect"}
             </button>
           </div>
 
@@ -418,9 +513,22 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-700">Issues Found ({issues.length})</h4>
             </div>
-            {issues.map((issue) => (
-              <IssueCard key={issue.id} issue={issue} onDelete={() => deleteIssue(issue.id)} onUpdate={() => onRefresh()} />
-            ))}
+            {item.photos.map((p, photoIdx) => {
+              const perPhotoIssues = issues.filter((i) => !i.photo_index || i.photo_index === photoIdx + 1);
+              if (perPhotoIssues.length === 0) return null;
+              return (
+                <div key={p.id} className="border border-gray-100 rounded-xl p-2.5 bg-gray-50/50">
+                  <div className="text-xs font-semibold text-gray-500 mb-2">
+                    Photo {photoIdx + 1}{p.photo_label ? ` · ${p.photo_label}` : ""}
+                  </div>
+                  <div className="space-y-2">
+                    {perPhotoIssues.map((issue) => (
+                      <IssueCard key={issue.id} issue={issue} onDelete={() => deleteIssue(issue.id)} onUpdate={() => onRefresh()} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 

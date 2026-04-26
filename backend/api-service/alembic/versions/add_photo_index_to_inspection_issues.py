@@ -1,7 +1,7 @@
 """add photo_index to inspection_issues
 
 Revision ID: add_photo_index_2024
-Revises: 66e55d2898b7
+Revises: 439ccd9639e5
 Create Date: 2024-04-21 00:00:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "add_photo_index_2024"
-down_revision = "66e55d2898b7"
+down_revision = "439ccd9639e5"
 branch_labels = None
 depends_on = None
 
