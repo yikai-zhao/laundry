@@ -277,7 +277,7 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
   };
 
   const inspStatus = item.inspection?.status;
-  const issues = item.inspection?.issues || [];
+  const issues = Array.isArray(item.inspection?.issues) ? item.inspection!.issues : [];
 
   return (
     <>

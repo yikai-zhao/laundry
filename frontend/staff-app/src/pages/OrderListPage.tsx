@@ -68,8 +68,8 @@ export default function OrderListPage() {
         api.get("/orders", { params: { ...(search ? { q: search } : {}), ...(statusFilter ? { status: statusFilter } : {}) } }),
         search || statusFilter ? api.get("/orders") : Promise.resolve(null),
       ]);
-      setOrders(filtered.data);
-      setAllOrders(all ? all.data : filtered.data);
+      setOrders(Array.isArray(filtered.data) ? filtered.data : []);
+      setAllOrders(all ? (Array.isArray(all.data) ? all.data : []) : (Array.isArray(filtered.data) ? filtered.data : []));
     } catch (e) {
       console.error(e);
     } finally {

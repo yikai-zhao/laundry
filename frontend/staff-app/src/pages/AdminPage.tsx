@@ -33,8 +33,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get("/orders").then(({ data }) => setOrders(data)),
-      api.get("/users").then(({ data }) => setUsers(data)).catch(() => {}),
+      api.get("/orders").then(({ data }) => setOrders(Array.isArray(data) ? data : [])),
+      api.get("/users").then(({ data }) => setUsers(Array.isArray(data) ? data : [])).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
 

@@ -78,7 +78,7 @@ export default function InspectionReportPage() {
 
         {/* Garments */}
         {order.items.map((item, idx) => {
-          const issues: Issue[] = item.inspection?.issues || [];
+          const issues: Issue[] = Array.isArray(item.inspection?.issues) ? item.inspection!.issues : [];
           const inspector = item.inspection?.inspector;
           const inspectionStatus = item.inspection?.status;
 

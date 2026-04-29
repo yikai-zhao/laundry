@@ -198,6 +198,7 @@ class InspectionRecord(Base):
     order_item_id = Column(String, ForeignKey("laundry_order_items.id"), nullable=False)
     inspector_id = Column(String, ForeignKey("app_users.id"), nullable=True)
     status = Column(String, default=InspectionStatus.PENDING)
+    detected_photos_key = Column(String, nullable=True)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, default=_now, onupdate=_now)
 

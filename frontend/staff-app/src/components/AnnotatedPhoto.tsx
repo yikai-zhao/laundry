@@ -29,14 +29,15 @@ interface AnnotatedPhotoProps {
 }
 
 const AnnotatedPhoto: React.FC<AnnotatedPhotoProps> = ({ src, issues, className = '', onClick }) => {
-  const issuesWithBbox = issues.filter(
+  const safeIssues = Array.isArray(issues) ? issues : [];
+  const issuesWithBbox = safeIssues.filter(
     i => i.bbox_x != null && i.bbox_y != null && i.bbox_w != null && i.bbox_h != null
   );
 
   return (
     <div className={`relative inline-block ${className}`} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <img src={src} alt="garment" className="w-full h-full object-cover" />
-      {issuesWithBbox.map((issue) => {
+      {issuesWithBbox.map((issue: Issue) => {
         const color = ISSUE_COLORS[issue.issue_type] || ISSUE_COLORS.other;
         const label = ISSUE_LABELS[issue.issue_type] || issue.issue_type;
         return (

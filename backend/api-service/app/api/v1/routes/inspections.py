@@ -1,5 +1,6 @@
 import base64
 import concurrent.futures
+import hashlib
 import json
 import logging
 import os
@@ -942,6 +943,7 @@ def ai_detect_openai(photo_file_paths: list[str], garment_type: str,
                         response_format={"type": "json_object"},
                         max_tokens=max_tokens,
                         temperature=temperature,
+                        seed=42,
                     )
                     raw_content = response.choices[0].message.content
                     if not raw_content:
@@ -1295,6 +1297,7 @@ def _run_detection_background(
     note: str,
     fabric_type: str,
     service_type: str,
+    photo_key: str = "",
 ) -> None:
     """Background thread: runs the full AI pipeline and persists results independently."""
     db = _SessionLocal()
@@ -1328,6 +1331,8 @@ def _run_detection_background(
         insp = db.query(InspectionRecord).filter(InspectionRecord.id == inspection_id).first()
         if insp:
             insp.status = InspectionStatus.COMPLETED
+            if photo_key:
+                insp.detected_photos_key = photo_key
         db.commit()
         logger.info(
             "Background detection completed for inspection %s: %d issues saved",
@@ -1361,6 +1366,22 @@ def trigger_detection(inspection_id: str, db: Session = Depends(get_db), _user: 
     if not settings.OPENAI_API_KEY:
         raise HTTPException(status_code=503, detail="AI detection unavailable: OPENAI_API_KEY is not configured")
 
+    # Compute fingerprint of current photos to enable cache-hit detection.
+    photo_key = hashlib.md5(json.dumps(sorted(photo_paths)).encode()).hexdigest() if photo_paths else ""
+
+    # If photos haven't changed since last successful detection, return cached result.
+    stored_key = getattr(insp, "detected_photos_key", None)
+    if (
+        insp.status == InspectionStatus.COMPLETED
+        and photo_key
+        and stored_key == photo_key
+    ):
+        logger.info(
+            "Skipping re-detection for inspection %s — photos unchanged (key=%s)",
+            inspection_id, photo_key,
+        )
+        return insp.to_dict()
+
     # Remove old AI issues synchronously (fast path)
     ai_issue_ids = [
         row[0]
@@ -1386,6 +1407,7 @@ def trigger_detection(inspection_id: str, db: Session = Depends(get_db), _user: 
             item.note or "" if item else "",
             item.fabric_type or "" if item else "",
             item.service_type or "" if item else "",
+            photo_key,
         ),
         daemon=True,
     )
