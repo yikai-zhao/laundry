@@ -3,6 +3,12 @@ export interface User {
   username: string;
   role: string;
   display_name: string;
+  is_active: boolean;
+  must_change_password: boolean;
+  failed_login_count: number;
+  locked_until: string | null;
+  last_login_at: string | null;
+  created_at: string;
 }
 
 export interface Customer {

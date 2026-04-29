@@ -42,12 +42,14 @@ def create_app() -> FastAPI:
                     password_hash=hash_password("admin123"),
                     role=UserRole.ADMIN,
                     display_name="Admin",
+                    must_change_password=True,
                 ))
                 db.add(AppUser(
                     username="staff",
                     password_hash=hash_password("staff123"),
                     role=UserRole.STAFF,
                     display_name="Staff",
+                    must_change_password=True,
                 ))
                 db.commit()
         finally:

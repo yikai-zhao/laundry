@@ -24,3 +24,17 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const url = error.config?.url ?? "";
+    const status = error.response?.status;
+    if (status === 401 && !url.includes("/auth/login")) {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_user");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);

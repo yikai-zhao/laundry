@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/auth";
 import Navbar from "./components/Navbar";
 import LoginPage from "./pages/LoginPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
 import OrderListPage from "./pages/OrderListPage";
 import NewOrderPage from "./pages/NewOrderPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
@@ -44,7 +45,9 @@ class ErrorBoundary extends React.Component<
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
   if (!token) return <Navigate to="/login" replace />;
+  if (user?.must_change_password) return <Navigate to="/change-password" replace />;
   return (
     <>
       <Navbar />
@@ -60,6 +63,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/orders" element={<ProtectedRoute><OrderListPage /></ProtectedRoute>} />
           <Route path="/orders/new" element={<ProtectedRoute><NewOrderPage /></ProtectedRoute>} />
           <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />

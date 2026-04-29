@@ -69,6 +69,14 @@ api.interceptors.response.use(
       message: error.message,
       data: error.response?.data,
     });
+    // Auto-logout on 401 (token expired / invalid) — but not on login endpoint
+    const url = error.config?.url ?? "";
+    const status = error.response?.status;
+    if (status === 401 && !url.includes("/auth/login")) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
     return Promise.reject(error);
   }
 );

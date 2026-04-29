@@ -56,7 +56,13 @@ class AppUser(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default=UserRole.STAFF)
     display_name = Column(String)
+    is_active = Column(Boolean, default=True)
+    must_change_password = Column(Boolean, default=False)
+    failed_login_count = Column(Integer, default=0)
+    locked_until = Column(DateTime, nullable=True)
+    last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_now)
+    updated_at = Column(DateTime, default=_now, onupdate=_now)
 
     def to_dict(self):
         return {
@@ -64,6 +70,11 @@ class AppUser(Base):
             "username": self.username,
             "role": self.role,
             "display_name": self.display_name,
+            "is_active": bool(self.is_active) if self.is_active is not None else True,
+            "must_change_password": bool(self.must_change_password) if self.must_change_password is not None else False,
+            "failed_login_count": self.failed_login_count or 0,
+            "locked_until": self.locked_until.isoformat() if self.locked_until else None,
+            "last_login_at": self.last_login_at.isoformat() if self.last_login_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
