@@ -1,0 +1,65 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/staff-app/**"
+      - ".github/workflows/build-android-apk.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/staff-app/package-lock.json
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install npm dependencies
+        working-directory: frontend/staff-app
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: frontend/staff-app
+        run: npm run build
+
+      - name: Add Capacitor Android platform
+        working-directory: frontend/staff-app
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('frontend/staff-app/android/**/*.gradle*', 'frontend/staff-app/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Build debug APK
+        working-directory: frontend/staff-app/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LaundryAI-debug-${{ github.run_number }}
+          path: frontend/staff-app/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30

@@ -133,26 +133,32 @@ function IssueCard({ issue, onDelete, onUpdate }: { issue: Issue; onDelete: () =
   }
 
   return (
-    <div className="flex items-center justify-between rounded-lg p-2.5 bg-white border gap-2 text-sm">
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded font-medium ${issue.source === "ai" ? "bg-violet-100 text-violet-700" : "bg-sky-100 text-sky-700"}`}>
-          {issue.source === "ai" ? "AI" : "Manual"}
-        </span>
-        <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${SEV_BADGE[issue.severity_level] || ""}`}>
-          {SEV_LABEL[issue.severity_level]}
-        </span>
-        <div className="min-w-0">
-          <span className="font-medium text-gray-800">{ISSUE_LABEL[issue.issue_type] || issue.issue_type}</span>
-          {issue.position_desc && <span className="text-gray-400 ml-1.5">· {issue.position_desc}</span>}
-          {issue.confidence_score != null && (
-            <span className="text-xs text-gray-300 ml-1">({(issue.confidence_score * 100).toFixed(1)}%)</span>
-          )}
+    <div className="rounded-xl px-3 py-2.5 bg-white border border-gray-100 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          <span className="font-semibold text-gray-900">{ISSUE_LABEL[issue.issue_type] || issue.issue_type}</span>
+          <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${SEV_BADGE[issue.severity_level] || ""}`}>
+            {SEV_LABEL[issue.severity_level]}
+          </span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+            issue.source === "ai" ? "bg-violet-100 text-violet-600" : "bg-sky-100 text-sky-600"
+          }`}>
+            {issue.source === "ai" ? "AI" : "Manual"}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <button onClick={() => setEditing(true)} className="text-indigo-500 text-xs">Edit</button>
+          <button onClick={onDelete} className="text-gray-300 hover:text-red-400 text-sm leading-none">✕</button>
         </div>
       </div>
-      <div className="flex gap-3 shrink-0">
-        <button onClick={() => setEditing(true)} className="text-indigo-600 text-xs hover:underline">Edit</button>
-        <button onClick={onDelete} className="text-red-400 text-xs hover:underline">✕</button>
-      </div>
+      {issue.position_desc && (
+        <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+          {issue.position_desc}
+          {issue.confidence_score != null && (
+            <span className="text-gray-300 ml-1.5">{(issue.confidence_score * 100).toFixed(0)}%</span>
+          )}
+        </p>
+      )}
     </div>
   );
 }
@@ -206,11 +212,8 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
       if (allWarnings.length > 0) {
         setQualityWarnings(allWarnings);
       }
-      if (!item.inspection || item.inspection.issues.length === 0) {
-        await triggerDetect();
-      } else {
-        onRefresh();
-      }
+      // Always re-detect so newly added photos are analysed together with existing ones
+      await triggerDetect();
     } catch (e) {
       console.error(e);
       setUploadError(getApiErrorMessage(e));
@@ -283,7 +286,7 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
           <div className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
             <AnnotatedPhoto
               src={lightbox.src}
-              issues={issues.filter((i) => !i.photo_index || i.photo_index === lightbox.photoIndex)}
+              issues={issues.filter((i) => i.photo_index === lightbox.photoIndex || (!i.photo_index && lightbox.photoIndex === 1))}
               className="max-w-full max-h-[80vh] rounded-lg"
             />
           </div>
@@ -369,12 +372,7 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
         <div className="px-4 py-3">
           {/* Photo guidance */}
           {item.photos.length === 0 && (
-            <div className="mb-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-700 space-y-1">
-              <p className="font-semibold">📸 Photo Guide:</p>
-              <p>• Front view (required) — full garment front</p>
-              <p>• Back view (required) — full garment back</p>
-              <p>• Detail shots (optional) — collar, cuffs, hem, stains</p>
-            </div>
+            <p className="mb-2 text-xs text-gray-400">拍正面 + 反面，然後執行 AI 掃描</p>
           )}
 
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -383,8 +381,8 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
                 <button onClick={() => setLightbox({ src: resolveAssetUrl(p.file_path), photoIndex: photoIdx + 1 })}>
                   <AnnotatedPhoto
                     src={resolveAssetUrl(p.file_path)}
-                    issues={issues.filter((i) => !i.photo_index || i.photo_index === photoIdx + 1)}
-                    className="w-20 h-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition"
+                    issues={issues.filter((i) => i.photo_index === photoIdx + 1 || (!i.photo_index && photoIdx === 0))}
+                    className="w-24 h-24 rounded-xl object-cover hover:opacity-90 transition"
                   />
                 </button>
                 {p.photo_label && (
@@ -400,7 +398,7 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
               </div>
             ))}
             {item.photos.length === 0 && (
-              <div className="w-full text-center py-4 text-xs text-gray-400">No photos yet — use Camera or Gallery below</div>
+              <div className="w-full text-center py-6 text-xs text-gray-300">No photos yet</div>
             )}
           </div>
 
@@ -425,74 +423,83 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
             onChange={(e) => e.target.files && uploadPhotos(e.target.files)} />
 
-          {/* AI detecting progress bar */}
           {detecting && (
-            <div className="mt-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-2.5">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-semibold text-violet-700">🤖 AI scanning garment…</span>
-                <span className="text-xs text-violet-500 font-mono">{detectElapsed}s</span>
+            <div className="mt-3 px-0.5">
+              <div className="flex justify-between mb-1">
+                <span className="text-xs text-violet-600">AI 掃描中…</span>
+                <span className="text-xs text-violet-400 tabular-nums">{detectElapsed}s</span>
               </div>
-              <div className="w-full bg-violet-100 rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-violet-100 rounded-full h-1 overflow-hidden">
                 <div
-                  className="h-1.5 bg-violet-500 rounded-full transition-all"
-                  style={{ width: `${Math.min(95, (detectElapsed / 120) * 100)}%` }}
+                  className="h-1 bg-violet-500 rounded-full transition-all duration-1000"
+                  style={{ width: `${Math.min(90, (detectElapsed / 120) * 100)}%` }}
                 />
               </div>
-              <p className="text-[10px] text-violet-400 mt-1">Multiple AI passes running (typically 60–120s per photo)</p>
             </div>
           )}
 
-          <div className="flex gap-2 mt-3 flex-wrap">
+          {/* Primary action buttons — Camera / Gallery / AI */}
+          <div className="mt-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  // iOS Safari: file input click MUST be in sync event handler (no awaits)
+                  if (isNativePlatform()) {
+                    capturePhotoNative().then((file) => {
+                      if (file) {
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        uploadPhotos(dt.files);
+                      }
+                    });
+                    return;
+                  }
+                  cameraRef.current?.click();
+                }}
+                disabled={uploading || detecting}
+                className="flex flex-col items-center justify-center gap-2 bg-indigo-600 text-white py-5 px-3 rounded-2xl font-semibold hover:bg-indigo-700 active:bg-indigo-800 transition disabled:opacity-50 shadow-md">
+                <span className="text-3xl">{uploading ? "⏳" : "📷"}</span>
+                <span className="text-sm">{uploading ? "Uploading…" : "Camera"}</span>
+              </button>
+              <button
+                onClick={() => {
+                  // iOS Safari: file input click MUST be in sync event handler (no awaits)
+                  if (isNativePlatform()) {
+                    pickPhotosNative().then((files) => {
+                      if (files) {
+                        const dt = new DataTransfer();
+                        files.forEach((f) => dt.items.add(f));
+                        uploadPhotos(dt.files);
+                      }
+                    });
+                    return;
+                  }
+                  fileRef.current?.click();
+                }}
+                disabled={uploading || detecting}
+                className="flex flex-col items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 py-5 px-3 rounded-2xl font-semibold hover:bg-gray-50 active:bg-gray-100 transition disabled:opacity-50 shadow-sm">
+                <span className="text-3xl">🖼</span>
+                <span className="text-sm">Gallery</span>
+              </button>
+            </div>
             <button
-              onClick={() => {
-                // iOS Safari: file input click MUST be in sync event handler (no awaits)
-                if (isNativePlatform()) {
-                  capturePhotoNative().then((file) => {
-                    if (file) {
-                      const dt = new DataTransfer();
-                      dt.items.add(file);
-                      uploadPhotos(dt.files);
-                    }
-                  });
-                  return;
-                }
-                cameraRef.current?.click();
-              }}
-              disabled={uploading || detecting}
-              className="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50 shadow-sm">
-              <span>📷</span> {uploading ? "Uploading…" : "Camera"}
-            </button>
-            <button
-              onClick={() => {
-                // iOS Safari: file input click MUST be in sync event handler (no awaits)
-                if (isNativePlatform()) {
-                  pickPhotosNative().then((files) => {
-                    if (files) {
-                      const dt = new DataTransfer();
-                      files.forEach((f) => dt.items.add(f));
-                      uploadPhotos(dt.files);
-                    }
-                  });
-                  return;
-                }
-                fileRef.current?.click();
-              }}
-              disabled={uploading || detecting}
-              className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50">
-              <span>🖼</span> Gallery
-            </button>
-            <button onClick={triggerDetect} disabled={detecting || item.photos.length === 0}
-              className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-violet-100 transition disabled:opacity-50 ml-auto">
-              <span>🤖</span> {detecting ? `Analyzing… ${detectElapsed}s` : "Re-detect"}
+              onClick={triggerDetect}
+              disabled={detecting || item.photos.length === 0}
+              className="w-full flex items-center justify-center gap-3 bg-violet-600 text-white rounded-2xl font-bold hover:bg-violet-700 active:bg-violet-800 active:scale-[0.99] transition-all disabled:opacity-40 disabled:pointer-events-none shadow-lg shadow-violet-100 text-[15px]"
+              style={{ paddingTop: 18, paddingBottom: 18 }}>
+              {detecting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                  <span>Scanning… {detectElapsed}s</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-xl">🤖</span>
+                  <span>Detect Issues with AI</span>
+                </>
+              )}
             </button>
           </div>
-
-          {detecting && (
-            <div className="flex items-center gap-2 mt-2 text-xs text-violet-600 bg-violet-50 rounded-lg px-3 py-2">
-              <div className="w-3 h-3 border-2 border-violet-400 border-t-violet-700 rounded-full animate-spin shrink-0" />
-              AI is analyzing garment photos…
-            </div>
-          )}
 
           {aiNotConfigured && (
             <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
@@ -509,19 +516,19 @@ function GarmentCard({ item, onRefresh, onDelete }: { item: OrderItem; onRefresh
 
         {/* Issues */}
         {issues.length > 0 && (
-          <div className="px-4 pb-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-gray-700">Issues Found ({issues.length})</h4>
-            </div>
+          <div className="px-4 pb-3 space-y-3">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Issues · {issues.length} found
+            </h4>
             {item.photos.map((p, photoIdx) => {
-              const perPhotoIssues = issues.filter((i) => !i.photo_index || i.photo_index === photoIdx + 1);
+              const perPhotoIssues = issues.filter((i) => i.photo_index === photoIdx + 1 || (!i.photo_index && photoIdx === 0));
               if (perPhotoIssues.length === 0) return null;
               return (
-                <div key={p.id} className="border border-gray-100 rounded-xl p-2.5 bg-gray-50/50">
-                  <div className="text-xs font-semibold text-gray-500 mb-2">
-                    Photo {photoIdx + 1}{p.photo_label ? ` · ${p.photo_label}` : ""}
-                  </div>
-                  <div className="space-y-2">
+                <div key={p.id} className="space-y-2">
+                  <p className="text-[11px] text-gray-400 font-medium">
+                    Photo {photoIdx + 1}{p.photo_label ? ` — ${p.photo_label}` : ""}
+                  </p>
+                  <div className="space-y-1.5">
                     {perPhotoIssues.map((issue) => (
                       <IssueCard key={issue.id} issue={issue} onDelete={() => deleteIssue(issue.id)} onUpdate={() => onRefresh()} />
                     ))}

@@ -7,8 +7,9 @@ const config: CapacitorConfig = {
   // When building for production, remove the `server` block below.
   // Keep it during local dev only (hot-reload from dev server).
   server: {
-    // During development with `npx cap run ios/android`, point to your local API.
-    // For production builds, remove this entire server block.
+    // Points to the Codespace hosted backend — update URL if Codespace changes
+    url: "https://zany-yodel-v677wgpj7wxvcxxwx-80.app.github.dev",
+    cleartext: false,
     androidScheme: "https",
   },
   ios: {
