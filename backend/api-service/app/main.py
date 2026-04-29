@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
         os.makedirs("storage/signatures", exist_ok=True)
         db = SessionLocal()
         try:
+            # Seed default accounts if none exist
             if not db.query(AppUser).first():
                 db.add(AppUser(
                     username="admin",
@@ -52,6 +53,23 @@ def create_app() -> FastAPI:
                     must_change_password=True,
                 ))
                 db.commit()
+
+            # One-time emergency reset via env var:
+            # RESET_CREDENTIALS=admin:Admin@2026,staff:Staff@2026
+            reset_env = os.environ.get("RESET_CREDENTIALS", "").strip()
+            if reset_env:
+                for entry in reset_env.split(","):
+                    parts = entry.strip().split(":", 1)
+                    if len(parts) == 2:
+                        uname, pw = parts
+                        user = db.query(AppUser).filter(AppUser.username == uname).first()
+                        if user:
+                            user.password_hash = hash_password(pw)
+                            user.must_change_password = False
+                            user.failed_login_count = 0
+                            user.locked_until = None
+                db.commit()
+                print(f"[RESET] Credentials reset via RESET_CREDENTIALS env var")
         finally:
             db.close()
 

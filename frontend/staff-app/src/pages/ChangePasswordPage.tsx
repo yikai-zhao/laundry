@@ -52,9 +52,10 @@ export default function ChangePasswordPage() {
         old_password: oldPw,
         new_password: newPw,
       });
-      // Update stored user
-      if (data.user && token) {
-        setAuth(token, data.user);
+      // Update stored user — use returned user if available, else patch locally
+      if (token) {
+        const updatedUser = data.user ?? { ...user, must_change_password: false };
+        setAuth(token, updatedUser);
       }
       setSuccess(true);
       setTimeout(() => nav("/orders"), 1500);

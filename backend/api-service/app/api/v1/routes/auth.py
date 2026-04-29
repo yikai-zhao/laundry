@@ -122,5 +122,6 @@ def change_own_password(
     user.password_hash = hash_password(payload.new_password)
     user.must_change_password = False
     db.commit()
-    return {"ok": True}
+    db.refresh(user)
+    return {"ok": True, "user": user.to_dict()}
 
